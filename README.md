@@ -7,4 +7,5 @@
 # Куратор - 
 
 # Списосок участников
-Яковенко Евгений Николаевич https://t.me/Yakovenko_evgenii
+Яковенко Евгений Николаевич https://t.me/Yakovenko_evgenii  
+Теплова Людмила Геннадиевна https://t.me/lteplova
