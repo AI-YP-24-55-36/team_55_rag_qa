@@ -13,3 +13,4 @@
 * Людмила Теплова – tg: [@lteplova](https://t.me/lteplova "Людмила"), github: [@lteplova](https://github.com/lteplova "Людмила")
 * Альберт Тайчинов – tg: [@tayar902](https://t.me/tayar902 "Альберт"), github: [@tayar902](https://github.com/tayar902 "Альберт")
 * Алексей Ятковский – tg: [@BlackR_original](https://t.me/BlackR_original "Алексей"), github [@Aleksei-Ia](https://github.com/Aleksei-Ia "Алексей")
+
