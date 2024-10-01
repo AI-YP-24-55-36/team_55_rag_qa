@@ -7,5 +7,11 @@
 # Куратор - 
 
 # Списосок участников
-Яковенко Евгений Николаевич https://t.me/Yakovenko_evgenii  
-Теплова Людмила Геннадиевна https://t.me/lteplova
+
+Участник 1, Тайчинов Альберт Радикович - https://t.me/@tayar902, https://github.com/tayar902  
+Участник 2, Яковенко Евгений Николаевич - https://t.me/@Yakovenko_evgenii, https://github.com/yakovenko96  
+Участник 3, Теплова Людмила Геннадиевна - https://t.me/@lteplova, https://github.com/lteplova  
+Участник 3, Ятковский Алексей Петрович - https://t.me/@BlackR_original, https://github.com/Aleksei-Ia  
+
+
+
