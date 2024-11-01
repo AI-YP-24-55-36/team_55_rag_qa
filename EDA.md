@@ -136,18 +136,20 @@
         random_state=1)``
 **context**
 
-<img width="954" alt="image 12" src="https://github.com/user-attachments/assets/a15cab8d-6e7f-4299-ac52-ed3e601f4d71">
+<img width="947" alt="image" src="https://github.com/user-attachments/assets/2369f3cc-4713-4d14-a119-5ab7fe188b5b">
+
 
 Привлекает внимание - мода, европейский, италия, ассистент, вещь, ад, ассоциация, фирма, пенсильвания, бариста, выходные
 **question**
 
-<img width="983" alt="image 13" src="https://github.com/user-attachments/assets/f14a84c0-785b-49af-ac8d-db280b4988f8">
+<img width="941" alt="image" src="https://github.com/user-attachments/assets/e30613e1-26b2-4cfc-b3c5-031dff2e974a">
+
 
 
 Привлекает внимание - территория, исслевование, продажа, дом, работа, свойства, кофе, даты выходные
 **answer**
 
-<img width="952" alt="image 14" src="https://github.com/user-attachments/assets/e19e7468-29d8-487d-b8e1-e482f592bdbd">
+<img width="941" alt="image" src="https://github.com/user-attachments/assets/12016201-dd84-40d9-8af6-96dab2872881">
 
 Частотное слово include, возможно свойственно для построения ответа, упоминаются конкретные имена собственные, кофе, фото, продажи.
 Диаграммы подтверждают гипотезу о связности текстов в колонках.
