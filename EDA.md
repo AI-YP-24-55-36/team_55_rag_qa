@@ -286,25 +286,27 @@ _____
 
 ###  Named entity recognition
 
-Для извлечени именованных сущностей используется библиотека spacy, модель en_core_web_sm (English pipeline optimized for CPU. Components: tok2vec, tagger, parser, senter, ner, attribute_ruler, lemmatizer / written text (blogs, news, comments)) - модель обучена на английском языке на письменном веб-тексте (блоги, новости, комментарии), включает в себя слова, синтаксис и сущности ~[Модели](https://www.google.com/url?q=https%3A%2F%2Fspacy.io%2Fmodels%2Fen)~
+Для извлечени именованных сущностей используется библиотека spacy, модель en_core_web_sm (English pipeline optimized for CPU. Components: tok2vec, tagger, parser, senter, ner, attribute_ruler, lemmatizer / written text (blogs, news, comments)) - модель обучена на английском языке на письменном веб-тексте (блоги, новости, комментарии), включает в себя слова, синтаксис и сущности [Модели](https://www.google.com/url?q=https%3A%2F%2Fspacy.io%2Fmodels%2Fen)
+
 Сущности, которые выделяет модель:
-PERSON - People, including fictional.
-NORP - Nationalities or religious or political groups.
-FAC - Buildings, airports, highways, bridges, etc.
-ORG - Companies, agencies, institutions, etc.
-GPE - Countries, cities, states.
-LOC - Non-GPE locations, mountain ranges, bodies of water.
-PRODUCT - Objects, vehicles, foods, etc. (Not services.)
-EVENT - Named hurricanes, battles, wars, sports events, etc.
-WORK_OF_ART - Titles of books, songs, etc.
-LAW - Named documents made into laws.
-LANGUAGE - Any named language.
-DATE - Absolute or relative dates or periods. TIME - Times smaller than a day.
-PERCENT - Percentage, including "⅒".
-MONEY - Monetary values, including unit.
-QUANTITY - Measurements, as of weight or distance.
-ORDINAL - "first", "second", etc.
-CARDINAL - Numerals that do not fall under another type.
+
+PERSON - People, including fictional.  
+NORP - Nationalities or religious or political groups.  
+FAC - Buildings, airports, highways, bridges, etc.  
+ORG - Companies, agencies, institutions, etc.  
+GPE - Countries, cities, states.  
+LOC - Non-GPE locations, mountain ranges, bodies of water.  
+PRODUCT - Objects, vehicles, foods, etc. (Not services.)  
+EVENT - Named hurricanes, battles, wars, sports events, etc.  
+WORK_OF_ART - Titles of books, songs, etc.  
+LAW - Named documents made into laws.  
+LANGUAGE - Any named language.  
+DATE - Absolute or relative dates or periods. TIME - Times smaller than a day.  
+PERCENT - Percentage, including "⅒".   
+MONEY - Monetary values, including unit.  
+QUANTITY - Measurements, as of weight or distance.  
+ORDINAL - "first", "second", etc.  
+CARDINAL - Numerals that do not fall under another type.  
 
 Колонка **context** 
 
