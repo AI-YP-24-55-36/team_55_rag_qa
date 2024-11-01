@@ -14,7 +14,7 @@
 
 Файлы с результатами работы по первому этапу:  
 ``EDA.md``  
-``\ipynb_eda\[v2][EDA][RAG][_neural_bridge_rag_dataset_12000_].ipynb``  
+``EDA_RAG_neural_bridge_rag_dataset_12000.ipynb``  
 	
 add
 
