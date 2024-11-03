@@ -1,4 +1,6 @@
-### Датасет - https://drive.google.com/drive/folders/1q5WTMH39SYv_mr65Uicxj-IlztWJBe7i?hl=ru
+### Датасет - https://drive.google.com/file/d/1dgnwG1AZhspMJaDR6jz828qZkSnZg25t/view?usp=sharing
+
+Исходный датасет - https://huggingface.co/datasets/neural-bridge/rag-dataset-12000
 
 Набор данных для вопросно-ответной системы с использованием RAG (retrieval-augmented generation) представляет собой набор (12000 записей), 
 в котором каждая запись содержит поля "контекст", "вопрос" и "ответ", предназначенные для создания моделей, оптимизированных для RAG.
@@ -12,9 +14,7 @@
     - поле: answer
     тип: string
   ##### 2. Файлы:
-    - имя: data_train.parquet
-      - количество записей: 9600
-    - имя: data_test.parquet
-      - количество записей: 2400
+    - имя: full_dataset.csv
+      - количество записей: 12000
   ##### 3. Язык данных:
     - Английский
