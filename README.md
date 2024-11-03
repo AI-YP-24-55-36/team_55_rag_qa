@@ -15,14 +15,10 @@
 * tg: [@jmzzomg](https://t.me/jmzzomg "Георгий")
 * github: [@joein](github.com/joein "Георгий")
 
-## Список участников
+## Списосок участников
 
 * Евгений Яковенко – tg: [@Yakovenko_evgenii](https://t.me/Yakovenko_evgenii "Евгений"), github: [@yakovenko96](https://github.com/yakovenko96 "Евгений")
 * Людмила Теплова – tg: [@lteplova](https://t.me/lteplova "Людмила"), github: [@lteplova](https://github.com/lteplova "Людмила")
 * Альберт Тайчинов – tg: [@tayar902](https://t.me/tayar902 "Альберт"), github: [@tayar902](https://github.com/tayar902 "Альберт")
 * Алексей Ятковский – tg: [@BlackR_original](https://t.me/BlackR_original "Алексей"), github [@Aleksei-Ia](https://github.com/Aleksei-Ia "Алексей")
 
-## Файлы с результатами работы:
-1. Разведочный анализ данных
-* EDA.md
-* EDA_RAG_neural_bridge_rag_dataset_12000.ipynb
