@@ -287,21 +287,23 @@ _____
 
 колонка **context**
 
-<img width="1304" alt="image 23" src="https://github.com/user-attachments/assets/2e9d258a-24f0-458a-af6a-b55400994b46">
+<img width="1256" alt="image" src="https://github.com/user-attachments/assets/01bf52eb-53eb-455e-88c8-9638222de513">
 
 
 Ожидаемо в тексте большинство существительных, в контексте - это слова, связанные с датой, работой, играми, вещами, жизнью.  Не нарушена стилистичекая конструкция построения предложений при повестовании.
 
 Анализ колонки **question**
 
-<img width="1265" alt="image 24" src="https://github.com/user-attachments/assets/a62ac16b-69f5-43ba-8a32-0dfd291bfe4a">
+<img width="1257" alt="image" src="https://github.com/user-attachments/assets/4d74f7e5-955b-47b0-9ee2-0a5bc566eff6">
 
 
 В вопросах, часто упоминается само слово context, то есть вопрос часто отсылает к конкретному столбцу, где искать ответ. Также вопросы связаны с такими словами как автор, цели, события, книги, игры, роли.
 
 Анализ колонки **answer**
 
-<img width="1260" alt="image 25" src="https://github.com/user-attachments/assets/1358bdd9-8e9f-44a8-b284-facb1fe89fc0">
+
+<img width="1253" alt="image" src="https://github.com/user-attachments/assets/cf006081-a140-4da6-b236-80a7fb301fd0">
+
 
 Большинство ответов базируется на существительных автор, время, опять же контекст, система, бизнес, сервис, вода.
 Вопросы и ответы связаны по насыщенности существительных, на которых базируется предложение.
@@ -332,8 +334,7 @@ CARDINAL - Numerals that do not fall under another type.
 
 Колонка **context** 
 
-<img width="1300" alt="image 26" src="https://github.com/user-attachments/assets/a99a97b1-bc73-4fb0-be9c-e92f4caa4934">
-
+<img width="1299" alt="image" src="https://github.com/user-attachments/assets/36e73cb7-cfd8-4e53-9d08-7b1393396fda">
 
 Эти графики также дают нам представление о сути имеющихся текстов, видно, что в текстах речь о персонах/людях, о датах, числительных, организациях, локациях, национальностях, политических группах,  времени, о водоемах, ландшафте. 
 При рассмотрении топовой категории - персоны: видим, что речь идет о конкретных именах.
@@ -342,16 +343,13 @@ CARDINAL - Numerals that do not fall under another type.
 
 Колонка **question**
 
-<img width="1337" alt="image 27" src="https://github.com/user-attachments/assets/91c6c750-3803-46ea-9eaf-b060d7c0ca14">
+<img width="1292" alt="image" src="https://github.com/user-attachments/assets/b795f529-ce64-451f-9e14-e9cecadacdce">
+
 
 
 Колонка **answer**
 
-
-<img width="1337" alt="image 28" src="https://github.com/user-attachments/assets/9618b1a7-57b8-489a-890e-74a8be9006ff">
-
-
-
+<img width="1289" alt="image" src="https://github.com/user-attachments/assets/f181c7ae-d709-42de-bd6a-206e432026c8">
 
 **Выводы:**
 
