@@ -31,3 +31,4 @@
 2. Baseline model
 * Baseline.md
 * ipynb_base/Baseline.ipynb
+* ipynb_base/ файлы с экспериментами участников
