@@ -28,3 +28,6 @@
 * EDA.md
 * EDA_RAG_neural_bridge_rag_dataset_12000.ipynb
 * requirements.txt
+2. Baseline model
+* Baseline.md
+* ipynb_base/Baseline.ipynb
