@@ -30,7 +30,7 @@ def validate_csv(uploaded_file):
         else:
             # Чтение файла
             df = pd.read_csv(uploaded_file)
-            # Проверка на пустое содержимой
+            # Проверка на пустое содержимое
             if df.empty:
                 st.error("Файл не содержит данных")
                 logging.error("Файл пустой")
@@ -44,12 +44,13 @@ def validate_csv(uploaded_file):
             # Проверка типов столбцов
             non_text_columns = []
             for col in df.columns:
-                # Проверка, что столбец можно преобразовать в строку
-                if df[col].dtype == 'object' or 'str':
+                print(df[col].dtype)
+                # Проверка на тип данны в столбце
+                if df[col].dtype == 'object':
                     logging.info("колонки подходящего формата")
-
                 else: non_text_columns.append(col)
             # Если есть столбцы, которые не удалось преобразовать
+            print(non_text_columns)
             if non_text_columns:
                 st.error(f"Следующие столбцы не являются текстовыми: {non_text_columns}")
                 logging.error("Датасет содержит данные не того формата")
