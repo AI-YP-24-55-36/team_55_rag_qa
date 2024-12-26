@@ -3,7 +3,7 @@ import pandas as pd
 from validate_df import validate_csv
 import io
 import toml
-from eda import plot_length, length, plot_top_words, plot_wordcloud
+from eda import plot_length, length, plot_top_words, plot_wordcloud, prep
 import logging
 from logging.handlers import RotatingFileHandler
 import sys
@@ -142,11 +142,74 @@ def main():
                     logging.info("облако слов отрисовано успешно")
                     st.pyplot(fig)
 
+            # if uploaded_file is not None:
+            #     if st.sidebar.checkbox("Тематическое моделирование"):
+            #         cols = data.columns
+            #         lda_model, bow_corpus, dic = get_lda_objects(data[cols[0]])
+            #         fig, ax = lda_model.show_topics()
+            #         logging.info("темы отрисованы успешно")
+            #         st.pyplot(fig)
+
+
             st.sidebar.title("Препроцессинг")
+
+            if uploaded_file is not None:
+                if st.sidebar.button("Удалить дубликаты"):
+                    columns = data.columns
+                    if data.duplicated().values.any():
+                        data.drop_duplicates(keep = 'first', inplace = True)
+                        st.success(f"Строки с дубликатами удалены. Стало всего {len(data)} строк")
+                    else:
+                        st.warning("В датасете нет дубликатов")
+
+            if uploaded_file is not None:
+                if st.sidebar.button("Удалить пропуски"):
+                    data = data.dropna()
+                    st.success(f"Строки с пропусками удалены. Стало всего {len(data)} строк")
+
+            if uploaded_file is not None:
+                if st.sidebar.button("Очистить текст"):
+                    cols = data.columns
+                    data["clear_text"] = data[cols[0]].apply(lambda x: prep(x))
+                    st.success(f"Текст очищен от стоп-слов, от символов не являющихся буквами и цифрами, приведен к нижнему регистру, эту колонку можно подавать в модель для обучения")
+                    st.dataframe(data["clear_text"].head(10))
+
 
             st.sidebar.title("Обучение")
 
             st.sidebar.title("Инференс")
+
+
+
+            if st.sidebar.checkbox("Начать инференс модели"):
+                if 'inf_text' not in st.session_state:
+                    st.session_state.inf_text = ''
+                input_text = st.text_area("Введите текст для проверки работы модели",
+                                  height=200,
+                                  value=st.session_state.inf_text,
+                                  placeholder="Введите или скопируйте текст")
+
+                col1, col2, = st.columns(2)
+
+                with col1:
+
+                    if st.button('Отправить текст'):
+                        st.session_state.inf_text = input_text
+                        if len(st.session_state.inf_text):
+                            st.success('Текст отправлен в модель')
+                        else:
+                            st.warning('Поле пустое')
+
+                    if st.session_state.inf_text:
+                        st.write(st.session_state.inf_text)
+                        test = st.session_state.inf_text
+                        # inference  = model(test)
+
+                with col2:
+                    if st.button('Очистить форму'):
+                        st.session_state.inf_text = ''
+                        st.rerun()
+                        st.write("Очищено")
 
 
 
