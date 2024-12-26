@@ -3,7 +3,7 @@ import pandas as pd
 from validate_df import validate_csv
 import io
 import toml
-from eda import plot_length, length
+from eda import plot_length, length, plot_top_words, plot_wordcloud
 import logging
 from logging.handlers import RotatingFileHandler
 import sys
@@ -126,6 +126,20 @@ def main():
                     col_len = new_data.columns[-3:].to_list()
                     fig, ax = plot_length(new_data, col_len)
                     logging.info("график с длинами слов отрисован успешно")
+                    st.pyplot(fig)
+            if uploaded_file is not None:
+                if st.sidebar.checkbox("Частотность слов"):
+                    cols = data.columns
+                    fig, ax = plot_top_words(data[cols[0]])
+                    logging.info("график с частотностью слов отрисован успешно")
+                    st.pyplot(fig)
+                    # plot_top_words(df['context'], 'context')
+
+            if uploaded_file is not None:
+                if st.sidebar.checkbox("Облако слов"):
+                    cols = data.columns
+                    fig, ax = plot_wordcloud(data[cols[0]])
+                    logging.info("облако слов отрисовано успешно")
                     st.pyplot(fig)
 
             st.sidebar.title("Препроцессинг")
