@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# logs
+
+streamlit/streamlit/logs
+
 # C extensions
 *.so
 

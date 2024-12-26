@@ -3,17 +3,10 @@ import seaborn as sns
 from wordcloud import WordCloud
 from collections import defaultdict
 from collections import Counter
-
+# import pyLDAvis.gensim
 import nltk
-import ssl
-
-try:
-    _create_unverified_https_context = ssl._create_unverified_context
-except AttributeError:
-    pass
-else:
-    ssl._create_default_https_context = _create_unverified_https_context
-
+import re
+# import gensim
 
 # длины текстов в словах(токенах)
 def length(df):
@@ -32,10 +25,7 @@ def plot_length(df, col):
     plt.subplots_adjust(hspace=0.5)
     return fig, axes
 
-
-# частотность
-# Зафиксируем список стоп-слов
-# функция, токенизирует по словам переданный ей текст в список слов, возвращает корпус токенов
+# частотность, функция, токенизирует по словам переданный ей текст в список слов, возвращает корпус токенов
 def corpus(text):
     words = text.str.split().values.tolist()
     corpus = [word.lower() for i in words for word in i]
@@ -76,8 +66,6 @@ def plot_top_words(text):
     return fig, axes
 
 
-# plot_top_words(df['context'], 'context')
-
 def plot_wordcloud(text):
     # соединяем весь текст в список для подачи в wordcloud.generate
     STOPWORDS = set(nltk.corpus.stopwords.words('english') + ['-', '-', '–', '&', '/'])
@@ -97,3 +85,43 @@ def plot_wordcloud(text):
     plt.title(f'Облако слов колонка с текстами\n', fontsize=15)
     plt.show()
     return fig, ax
+
+#  тематическое моделирование
+
+
+# оставляем только слова
+def words_only(text):
+    return " ".join(re.compile("[A-Za-z]+").findall(text))
+# удаление слов меньше 2-х букв
+def remove_word(text):
+    return " ".join([token for token in text.split() if len(token) > 3])
+
+# удаление стоп слов
+def remove_stopwords(text):
+    mystopwords = set(nltk.corpus.stopwords.words('english') + ['-', '-', '–', '&', '/'])
+    try:
+        return " ".join([token for token in text.split() if not token in mystopwords])
+    except:
+        return ""
+def prep(text):
+    return remove_stopwords(remove_word(words_only(text.lower())))
+
+# Функция, которая разбивает данные на топики (num_topics = 10) по темам с помощью модели gensim.models.LdaMulticore
+# def get_lda_objects(text):
+#     corpus = prep(text)
+#     dic = gensim.corpora.Dictionary(corpus)
+#     bow_corpus = [dic.doc2bow(doc) for doc in corpus]
+#     lda_model =  gensim.models.LdaMulticore(bow_corpus,
+#                                     random_state = 42,
+#                                     num_topics = 10,
+#                                     id2word = dic,
+#                                     passes = 10,
+#                                     workers = 2)
+#
+#     return lda_model, bow_corpus, dic
+# # визуализация топиков,pyLDAvis - пакет извлекает информацию из подобранной тематической модели LDA для интерактивной веб-визуализации
+#
+# def plot_lda_vis(lda_model, bow_corpus, dic):
+#     pyLDAvis.enable_notebook()
+#     vis = pyLDAvis.gensim.prepare(lda_model, bow_corpus, dic, mds='tsne')
+#     return vis
