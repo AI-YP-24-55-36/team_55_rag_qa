@@ -186,10 +186,121 @@ def main():
                     st.dataframe(data["clear_text"].head(10))
 
 
-            st.sidebar.title("Обучение")
+            st.sidebar.title("Модель")
             st.sidebar.subheader("Параметры векторизации")
-            st.sidebar.subheader("Параметры загрузки в БД")
 
+            def on_slider_change_max_df():
+                st.write(f"Выбранное значение max_df: {st.session_state.slider_value_max_df}")
+                value = st.session_state.slider_value_max_df
+                return value
+
+            st.sidebar.slider(
+                "max_df",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.8,
+                step=0.1,
+                key="slider_value_max_df",
+                on_change=on_slider_change_max_df,
+            )
+
+            def on_slider_change_min_df():
+                st.write(f"Выбранное значение min_df: {st.session_state.slider_value_min_df}")
+                value = st.session_state.slider_value_min_df
+                return value
+
+            st.sidebar.slider(
+                "min_df",
+                min_value=0.0,
+                max_value=1.0,
+                value=1.0,
+                step=0.1,
+                key="slider_value_min_df",
+                on_change=on_slider_change_min_df,
+            )
+
+            def on_slider_change_max_features():
+                st.write(f"Выбранное значение max_features: {st.session_state.max_features}")
+                value = st.session_state.max_features
+                return value
+
+            st.sidebar.slider(
+                "min_df",
+                min_value=1000,
+                max_value=30000,
+                value=9000,
+                step=500,
+                key="max_features",
+                on_change=on_slider_change_max_features,
+            )
+
+            def on_sublinear_tf():
+                st.write(f"Выбранное значение sublinear_tf: {st.session_state.sublinear_tf}")
+                value = st.session_state.sublinear_tf
+                return value
+
+            st.sidebar.radio(
+                "sublinear_tf",
+                [True, False],
+                index=0,
+                key="sublinear_tf",
+                on_change=on_sublinear_tf,
+            )
+
+            def on_ngram():
+                st.write(f"Выбранное значение ngram_range: {st.session_state.ngram_range}")
+                value = st.session_state.ngram_range
+                return value
+
+            st.sidebar.radio(
+                "ngram_range",
+                [(1, 1), (1, 2)],
+                index=0,
+                key="ngram_range",
+                on_change=on_ngram,
+            )
+
+
+            max_df = on_slider_change_max_df()
+            min_df = on_slider_change_min_df()
+            max_features = on_slider_change_max_features()
+            smooth_idf = on_sublinear_tf()
+            ngramm = on_ngram()
+
+
+
+            st.sidebar.subheader("Выбор метрики близости")
+            def on_distance():
+                st.write(f"Метрика: {st.session_state.distance}")
+                value = st.session_state.distance
+                return value
+
+            st.sidebar.radio(
+                "distance",
+                ["models.Distance.COSINE", "models.Distance.EUCLID"],
+                index=0,
+                key="distance",
+                on_change=on_distance,
+            )
+
+            distance = on_distance()
+
+            st.sidebar.subheader("Обучение модели")
+
+            if st.sidebar.button("Параметры"):
+                    st.success(f"Модель")
+            else:
+                st.warning("Модель не определена")
+
+            if st.sidebar.button("Обучить"):
+                st.success(f"Модель обучена")
+            else:
+                st.warning("Не получилось")
+
+            if st.sidebar.button("Точность"):
+                st.success(f"Точность %")
+            else:
+                st.warning("Нет модели")
 
             st.sidebar.title("Инференс")
 
