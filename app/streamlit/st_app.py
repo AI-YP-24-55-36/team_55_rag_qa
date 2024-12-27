@@ -143,7 +143,8 @@ def main():
                     st.pyplot(fig)
 
             if uploaded_file is not None:
-                if st.sidebar.checkbox("t-SNE для топ-200 слов"):
+
+                if st.sidebar.checkbox("t-SNE для топ-200 слов", help="Если корпус слов большой, то вычисление потребует некоторого времени"):
                     cols = data.columns
                     fig, ax = plot_tsne(data[cols[0]])
                     logging.info("t-SNE отрисован успешно")
@@ -192,34 +193,36 @@ def main():
 
             st.sidebar.title("Инференс")
 
-            if st.sidebar.checkbox("Начать инференс модели"):
-                if 'inf_text' not in st.session_state:
-                    st.session_state.inf_text = ''
+
+            def text_form():
+                if 'input_text' not in st.session_state:
+                    st.session_state.input_text = " "
                 input_text = st.text_area("Введите текст для проверки работы модели",
                                   height=200,
-                                  value=st.session_state.inf_text,
-                                  placeholder="Введите или скопируйте текст")
+                                  value=st.session_state.input_text,
+                                  placeholder="Введите или скопируйте текст",
+                                    key="text_area"
+                                          )
+                return input_text
 
+            if st.sidebar.checkbox("Начать инференс модели"):
+                input_text = text_form()
                 col1, col2, = st.columns(2)
 
                 with col1:
                     if st.button('Отправить текст'):
-                        st.session_state.inf_text = input_text
-                        if len(st.session_state.inf_text):
+                        st.session_state.input_text = input_text
+                        if len(st.session_state.input_text):
                             st.success('Текст отправлен в модель')
                         else:
                             st.warning('Поле пустое')
-                    if st.session_state.inf_text:
-                        st.write(st.session_state.inf_text)
-                        test = st.session_state.inf_text
+                    if st.session_state.input_text:
+                        st.write(st.session_state.input_text)
+                        test = st.session_state.input_text
                         # inference  = model(test)
                 with col2:
                     if st.button('Очистить форму'):
-                        st.session_state.inf_text = ''
-                        st.rerun()
-                        st.success("Очищено")
-
-
+                        st.session_state.input_text = " "
 
 if __name__ == "__main__":
     main()
