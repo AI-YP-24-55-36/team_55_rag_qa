@@ -3,7 +3,7 @@ import pandas as pd
 from validate_df import validate_csv
 import io
 import toml
-from eda import plot_length, length, plot_top_words, plot_wordcloud, prep
+from eda import plot_length, length, plot_top_words, plot_wordcloud, prep, plot_tsne
 import logging
 from logging.handlers import RotatingFileHandler
 import sys
@@ -53,6 +53,7 @@ def main():
     st.markdown("""
     ### Возможности приложения
     - загрузка датасета и анализ данных
+    - препроцессинг данных
     - конфигурирование и обучение модели
     - получение инференса
     """)
@@ -133,7 +134,6 @@ def main():
                     fig, ax = plot_top_words(data[cols[0]])
                     logging.info("график с частотностью слов отрисован успешно")
                     st.pyplot(fig)
-                    # plot_top_words(df['context'], 'context')
 
             if uploaded_file is not None:
                 if st.sidebar.checkbox("Облако слов"):
@@ -142,11 +142,19 @@ def main():
                     logging.info("облако слов отрисовано успешно")
                     st.pyplot(fig)
 
+            if uploaded_file is not None:
+                if st.sidebar.checkbox("t-SNE для топ-200 слов"):
+                    cols = data.columns
+                    fig, ax = plot_tsne(data[cols[0]])
+                    logging.info("t-SNE отрисован успешно")
+                    st.pyplot(fig)
+
+
             # if uploaded_file is not None:
             #     if st.sidebar.checkbox("Тематическое моделирование"):
             #         cols = data.columns
-            #         lda_model, bow_corpus, dic = get_lda_objects(data[cols[0]])
-            #         fig, ax = lda_model.show_topics()
+            #         lda_model, bow_corpus, dic = get_lda_objects(data[cols[0][:10]])
+            #         fig, ax = plot_lda_vis(lda_model, bow_corpus, dic)
             #         logging.info("темы отрисованы успешно")
             #         st.pyplot(fig)
 
@@ -164,8 +172,10 @@ def main():
 
             if uploaded_file is not None:
                 if st.sidebar.button("Удалить пропуски"):
-                    data = data.dropna()
-                    st.success(f"Строки с пропусками удалены. Стало всего {len(data)} строк")
+                    if data.isnull().values.any():
+                        data = data.dropna()
+                        st.success(f"Строки с пропусками удалены. Стало всего {len(data)} строк")
+                    else: st.warning("В датасете нет пропущенных значений")
 
             if uploaded_file is not None:
                 if st.sidebar.button("Очистить текст"):
@@ -176,10 +186,11 @@ def main():
 
 
             st.sidebar.title("Обучение")
+            st.sidebar.subheader("Параметры векторизации")
+            st.sidebar.subheader("Параметры загрузки в БД")
+
 
             st.sidebar.title("Инференс")
-
-
 
             if st.sidebar.checkbox("Начать инференс модели"):
                 if 'inf_text' not in st.session_state:
@@ -192,24 +203,21 @@ def main():
                 col1, col2, = st.columns(2)
 
                 with col1:
-
                     if st.button('Отправить текст'):
                         st.session_state.inf_text = input_text
                         if len(st.session_state.inf_text):
                             st.success('Текст отправлен в модель')
                         else:
                             st.warning('Поле пустое')
-
                     if st.session_state.inf_text:
                         st.write(st.session_state.inf_text)
                         test = st.session_state.inf_text
                         # inference  = model(test)
-
                 with col2:
                     if st.button('Очистить форму'):
                         st.session_state.inf_text = ''
                         st.rerun()
-                        st.write("Очищено")
+                        st.success("Очищено")
 
 
 

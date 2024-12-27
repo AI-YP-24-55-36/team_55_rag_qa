@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="ba0c1de1-70ee-409a-8da5-98de5e4cfcbb" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/streamlit.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/config.toml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/eda.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/st_app.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/validate_df.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/../../.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/.idea/streamlit.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/config.toml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/eda.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/logs/app.log.1" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/logs/app.log.2" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/logs/app.log.3" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/logs/app.log.4" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/logs/app.log.5" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/st_app.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/validate_df.py" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "customColor": "",
+  "associatedIndex": 2
+}]]></component>
+  <component name="ProjectId" id="2qlkUTxhtbNikV5dW5mWpUaZbHH" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "streamlit",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
+  }
+}]]></component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-python-sdk-babbdf50b680-746f403e7f0c-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-241.15989.155" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="ba0c1de1-70ee-409a-8da5-98de5e4cfcbb" name="Changes" comment="" />
+      <created>1735244565156</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1735244565156</updated>
+    </task>
+    <servers />
+  </component>
+</project>

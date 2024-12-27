@@ -3,10 +3,10 @@ import seaborn as sns
 from wordcloud import WordCloud
 from collections import defaultdict
 from collections import Counter
-# import pyLDAvis.gensim
 import nltk
 import re
-# import gensim
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.manifold import TSNE
 
 # длины текстов в словах(токенах)
 def length(df):
@@ -14,7 +14,6 @@ def length(df):
     for col in columns:
         df[f'length_{col}'] = df[col].astype('str').apply(lambda text: len(text.split()))
     return df
-
 
 def plot_length(df, col):
     sns.set_theme(palette='pastel', font_scale=0.9)
@@ -50,8 +49,6 @@ def plot_top_words(text):
     z, w = zip(*top)
     sns.barplot(x=w, y=z, ax=axes[0])
 
-    # plt.bar(z, w, ax=axes[0])
-
     counter = Counter(corp)
     most = counter.most_common()
     x, y = [], []
@@ -65,7 +62,7 @@ def plot_top_words(text):
     plt.subplots_adjust(hspace=0.5, wspace=0.5)
     return fig, axes
 
-
+# Функция 
 def plot_wordcloud(text):
     # соединяем весь текст в список для подачи в wordcloud.generate
     STOPWORDS = set(nltk.corpus.stopwords.words('english') + ['-', '-', '–', '&', '/'])
@@ -86,9 +83,6 @@ def plot_wordcloud(text):
     plt.show()
     return fig, ax
 
-#  тематическое моделирование
-
-
 # оставляем только слова
 def words_only(text):
     return " ".join(re.compile("[A-Za-z]+").findall(text))
@@ -106,22 +100,20 @@ def remove_stopwords(text):
 def prep(text):
     return remove_stopwords(remove_word(words_only(text.lower())))
 
-# Функция, которая разбивает данные на топики (num_topics = 10) по темам с помощью модели gensim.models.LdaMulticore
-# def get_lda_objects(text):
-#     corpus = prep(text)
-#     dic = gensim.corpora.Dictionary(corpus)
-#     bow_corpus = [dic.doc2bow(doc) for doc in corpus]
-#     lda_model =  gensim.models.LdaMulticore(bow_corpus,
-#                                     random_state = 42,
-#                                     num_topics = 10,
-#                                     id2word = dic,
-#                                     passes = 10,
-#                                     workers = 2)
-#
-#     return lda_model, bow_corpus, dic
-# # визуализация топиков,pyLDAvis - пакет извлекает информацию из подобранной тематической модели LDA для интерактивной веб-визуализации
-#
-# def plot_lda_vis(lda_model, bow_corpus, dic):
-#     pyLDAvis.enable_notebook()
-#     vis = pyLDAvis.gensim.prepare(lda_model, bow_corpus, dic, mds='tsne')
-#     return vis
+def plot_tsne(text):
+    corpus = text.apply(lambda x: prep(x))
+    vectorizer = TfidfVectorizer(max_features=100)
+    X = vectorizer.fit_transform(corpus)
+    tsne = TSNE(n_components=2, random_state=42)
+    X_tsne = tsne.fit_transform(X.toarray())
+    feature_names = vectorizer.get_feature_names_out()
+    word_dict = {i: feature_names[i] for i in range(len(feature_names))}
+
+    fig, ax = plt.subplots(figsize=(15, 15))
+    ax.scatter(X_tsne[:, 0], X_tsne[:, 1])
+
+    for i, word in word_dict.items():
+        ax.annotate(word, (X_tsne[i, 0], X_tsne[i, 1]))
+    plt.title('t-SNE Визуализация для 100 самых частых слов', fontsize=15)
+    plt.show()
+    return fig, ax
