@@ -35,7 +35,7 @@ def plot_top_words(text):
     stop = set(nltk.corpus.stopwords.words('english') + ['-', '-', '–', '&', '/'])
     sns.set_theme(palette='pastel', font_scale=0.9)
     fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(15, 7))
-    plt.suptitle(f'Наиболее часто встречающиеся стоп-слова и топ _НЕ_ стоп-слов столбец', fontsize=12)
+    plt.suptitle(f'Топ частотных стоп-слов и топ _НЕ_ стоп-слов', fontsize=12)
 
     # токенизация на слова
     corp = corpus(text)
