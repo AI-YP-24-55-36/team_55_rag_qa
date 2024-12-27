@@ -81,27 +81,27 @@ def main():
 
         if valid_df is not None:
             if st.sidebar.checkbox("Показать информацию о данных"):
-                st.write(f"Всего {len(data)} строк")
-                st.write(f"Всего {len(data.columns)} столбца")
+                st.success(f"Всего {len(data)} строк")
+                st.success(f"Всего {len(data.columns)} столбца")
 
 
             if st.sidebar.checkbox("Проверить есть ли дубликаты"):
                 columns = data.columns
                 if data.duplicated().values.any():
-                    st.write("В датасете есть полные дубликаты")
+                    st.warning("В датасете есть полные дубликаты")
                 elif data.duplicated(subset=columns[0]).values.any():
-                    st.write(f"В датасете есть дубликаты в колонке {columns[0]}")
+                    st.warning(f"В датасете есть дубликаты в колонке {columns[0]}")
                 elif data.duplicated(subset=columns[1]).values.any():
-                    st.write(f"В датасете есть дубликаты в колонке {columns[1]}")
+                    st.warning(f"В датасете есть дубликаты в колонке {columns[1]}")
                 elif data.duplicated(subset=columns[2]).values.any():
-                    st.write(f"В датасете есть дубликаты в колонке в колонке {columns[2]}")
+                    st.warning(f"В датасете есть дубликаты в колонке в колонке {columns[2]}")
                 else:
-                    st.write("В датасете нет дубликатов")
+                    st.success("В датасете нет дубликатов")
 
             if st.sidebar.checkbox("Проверить есть ли пропуски в данных"):
                 # Проверка наличия пропущенных значений
                 if data.isnull().values.any():
-                    st.write("В датасете есть пропущенные значения.")
+                    st.warning("В датасете есть пропущенные значения.")
 
                     # Получение списка строк с пропущенными значениями
                     missing_rows = data[data.isnull().any(axis=1)].index.tolist()
@@ -112,12 +112,12 @@ def main():
                         st.write(f"Строка {row}")
                     if st.sidebar.button("строки с пропусками"):
                         if missing_rows:
-                            st.write("Строки с пропущенными значениями:")
+                            st.warning("Строки с пропущенными значениями:")
                             st.write(miss)
                         else:
                             st.write("В датасете нет пропущенных значений.")
                 else:
-                    st.write("В датасете нет пропущенных значений.")
+                    st.success("В датасете нет пропущенных значений.")
 
             st.sidebar.title("Графики")
 
@@ -150,16 +150,6 @@ def main():
                     logging.info("t-SNE отрисован успешно")
                     st.pyplot(fig)
 
-
-            # if uploaded_file is not None:
-            #     if st.sidebar.checkbox("Тематическое моделирование"):
-            #         cols = data.columns
-            #         lda_model, bow_corpus, dic = get_lda_objects(data[cols[0][:10]])
-            #         fig, ax = plot_lda_vis(lda_model, bow_corpus, dic)
-            #         logging.info("темы отрисованы успешно")
-            #         st.pyplot(fig)
-
-
             st.sidebar.title("Препроцессинг")
 
             if uploaded_file is not None:
@@ -187,122 +177,124 @@ def main():
 
 
             st.sidebar.title("Модель")
-            st.sidebar.subheader("Параметры векторизации")
+            if st.sidebar.checkbox("Настроить"):
 
-            def on_slider_change_max_df():
-                st.write(f"Выбранное значение max_df: {st.session_state.slider_value_max_df}")
-                value = st.session_state.slider_value_max_df
-                return value
+                st.sidebar.subheader("Параметры векторизации")
 
-            st.sidebar.slider(
-                "max_df",
-                min_value=0.0,
-                max_value=1.0,
-                value=0.8,
-                step=0.1,
-                key="slider_value_max_df",
-                on_change=on_slider_change_max_df,
-            )
+                def on_slider_change_max_df():
+                    st.write(f"Выбранное значение max_df: {st.session_state.slider_value_max_df}")
+                    value = st.session_state.slider_value_max_df
+                    return value
 
-            def on_slider_change_min_df():
-                st.write(f"Выбранное значение min_df: {st.session_state.slider_value_min_df}")
-                value = st.session_state.slider_value_min_df
-                return value
+                st.sidebar.slider(
+                    "max_df",
+                    min_value=0.0,
+                    max_value=1.0,
+                    value=0.8,
+                    step=0.1,
+                    key="slider_value_max_df",
+                    on_change=on_slider_change_max_df,
+                )
 
-            st.sidebar.slider(
-                "min_df",
-                min_value=0.0,
-                max_value=1.0,
-                value=1.0,
-                step=0.1,
-                key="slider_value_min_df",
-                on_change=on_slider_change_min_df,
-            )
+                def on_slider_change_min_df():
+                    st.write(f"Выбранное значение min_df: {st.session_state.slider_value_min_df}")
+                    value = st.session_state.slider_value_min_df
+                    return value
 
-            def on_slider_change_max_features():
-                st.write(f"Выбранное значение max_features: {st.session_state.max_features}")
-                value = st.session_state.max_features
-                return value
+                st.sidebar.slider(
+                    "min_df",
+                    min_value=0.0,
+                    max_value=1.0,
+                    value=1.0,
+                    step=0.1,
+                    key="slider_value_min_df",
+                    on_change=on_slider_change_min_df,
+                )
 
-            st.sidebar.slider(
-                "min_df",
-                min_value=1000,
-                max_value=30000,
-                value=9000,
-                step=500,
-                key="max_features",
-                on_change=on_slider_change_max_features,
-            )
+                def on_slider_change_max_features():
+                    st.write(f"Выбранное значение max_features: {st.session_state.max_features}")
+                    value = st.session_state.max_features
+                    return value
 
-            def on_sublinear_tf():
-                st.write(f"Выбранное значение sublinear_tf: {st.session_state.sublinear_tf}")
-                value = st.session_state.sublinear_tf
-                return value
+                st.sidebar.slider(
+                    "min_df",
+                    min_value=1000,
+                    max_value=30000,
+                    value=9000,
+                    step=500,
+                    key="max_features",
+                    on_change=on_slider_change_max_features,
+                )
 
-            st.sidebar.radio(
-                "sublinear_tf",
-                [True, False],
-                index=0,
-                key="sublinear_tf",
-                on_change=on_sublinear_tf,
-            )
+                def on_sublinear_tf():
+                    st.write(f"Выбранное значение sublinear_tf: {st.session_state.sublinear_tf}")
+                    value = st.session_state.sublinear_tf
+                    return value
 
-            def on_ngram():
-                st.write(f"Выбранное значение ngram_range: {st.session_state.ngram_range}")
-                value = st.session_state.ngram_range
-                return value
+                st.sidebar.radio(
+                    "sublinear_tf",
+                    [True, False],
+                    index=0,
+                    key="sublinear_tf",
+                    on_change=on_sublinear_tf,
+                )
 
-            st.sidebar.radio(
-                "ngram_range",
-                [(1, 1), (1, 2)],
-                index=0,
-                key="ngram_range",
-                on_change=on_ngram,
-            )
+                def on_ngram():
+                    st.write(f"Выбранное значение ngram_range: {st.session_state.ngram_range}")
+                    value = st.session_state.ngram_range
+                    return value
 
-
-            max_df = on_slider_change_max_df()
-            min_df = on_slider_change_min_df()
-            max_features = on_slider_change_max_features()
-            smooth_idf = on_sublinear_tf()
-            ngramm = on_ngram()
+                st.sidebar.radio(
+                    "ngram_range",
+                    [(1, 1), (1, 2)],
+                    index=0,
+                    key="ngram_range",
+                    on_change=on_ngram,
+                )
 
 
+                max_df = on_slider_change_max_df()
+                min_df = on_slider_change_min_df()
+                max_features = on_slider_change_max_features()
+                smooth_idf = on_sublinear_tf()
+                ngramm = on_ngram()
 
-            st.sidebar.subheader("Выбор метрики близости")
-            def on_distance():
-                st.write(f"Метрика: {st.session_state.distance}")
-                value = st.session_state.distance
-                return value
 
-            st.sidebar.radio(
-                "distance",
-                ["models.Distance.COSINE", "models.Distance.EUCLID"],
-                index=0,
-                key="distance",
-                on_change=on_distance,
-            )
 
-            distance = on_distance()
+                st.sidebar.subheader("Выбор метрики близости")
+                def on_distance():
+                    st.write(f"Метрика: {st.session_state.distance}")
+                    value = st.session_state.distance
+                    return value
 
-            st.sidebar.subheader("Обучение модели")
+                st.sidebar.radio(
+                    "distance",
+                    ["models.Distance.COSINE", "models.Distance.EUCLID"],
+                    index=0,
+                    key="distance",
+                    on_change=on_distance,
+                )
 
-            if st.sidebar.button("Параметры"):
-                    st.success(f"Модель")
-            else:
-                st.warning("Модель не определена")
+                distance = on_distance()
 
-            if st.sidebar.button("Обучить"):
-                st.success(f"Модель обучена")
-            else:
-                st.warning("Не получилось")
+                st.sidebar.subheader("Обучение модели")
 
-            if st.sidebar.button("Точность"):
-                st.success(f"Точность %")
-            else:
-                st.warning("Нет модели")
+                if st.sidebar.button("Параметры"):
+                        st.success(f"Модель")
+                else:
+                    st.warning("Модель не определена")
 
-            st.sidebar.title("Инференс")
+                if st.sidebar.button("Обучить"):
+                    st.success(f"Модель обучена")
+                else:
+                    st.warning("Не получилось")
+
+                if st.sidebar.button("Точность"):
+                    st.success(f"Точность %")
+                else:
+                    st.warning("Нет модели")
+
+                st.sidebar.title("Инференс")
 
 
             def text_form():
