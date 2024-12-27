@@ -209,7 +209,7 @@ def main():
                     return value
 
                 st.sidebar.slider(
-                    "min_df",
+                    "max_features",
                     min_value=1000,
                     max_value=30000,
                     value=9000,
@@ -238,7 +238,7 @@ def main():
 
                 st.sidebar.radio(
                     "ngram_range",
-                    [(1, 1), (1, 2)],
+                    [(1, 1), (1, 2), (1, 3)],
                     index=0,
                     key="ngram_range",
                     on_change=on_ngram,
@@ -286,38 +286,42 @@ def main():
                 else:
                     st.warning("Нет модели")
 
-                st.sidebar.title("Инференс")
-
-
-            def text_form():
-                if 'input_text' not in st.session_state:
-                    st.session_state.input_text = " "
-                input_text = st.text_area("Введите текст для проверки работы модели",
+            def text_form(key):
+                if "textarea" not in st.session_state:
+                    st.session_state.textarea = ""
+                st.text_area("Введите текст для проверки работы модели",
                                   height=200,
-                                  value=st.session_state.input_text,
+                                  value="",
                                   placeholder="Введите или скопируйте текст",
-                                    key="text_area"
-                                          )
-                return input_text
+                                key=key)
 
-            if st.sidebar.checkbox("Начать инференс модели"):
-                input_text = text_form()
-                col1, col2, = st.columns(2)
+            if st.sidebar.checkbox("Инференс", key="infer", on_change=clear_other_checkboxes, args=("infer",)):
+                text_form("textarea")
 
-                with col1:
-                    if st.button('Отправить текст'):
-                        st.session_state.input_text = input_text
-                        if len(st.session_state.input_text):
-                            st.success('Текст отправлен в модель')
-                        else:
-                            st.warning('Поле пустое')
-                    if st.session_state.input_text:
-                        st.write(st.session_state.input_text)
-                        test = st.session_state.input_text
-                        # inference  = model(test)
-                with col2:
-                    if st.button('Очистить форму'):
-                        st.session_state.input_text = " "
+                if st.button('Отправить текст'):
+                    if len(st.session_state.textarea):
+                        st.success('Текст отправлен в модель')
+                    else:
+                        st.warning('Поле пустое')
+                if st.session_state.textarea:
+                    st.write(st.session_state.textarea)
+                    test = st.session_state.textarea
+                    # inference  = model(test)
+
+            if st.sidebar.checkbox("Повторить", key="repeat", on_change=clear_other_checkboxes, args=("repeat",)):
+                text_form("repeating")
+
+                if st.button('Отправить текст'):
+                    if len(st.session_state.repeating):
+                        st.success('Текст отправлен в модель')
+                    else:
+                        st.warning('Поле пустое')
+                if st.session_state.repeating:
+                    st.write(st.session_state.repeating)
+                    test = st.session_state.repeating
+                    # inference  = model(test)
+
+
 
 if __name__ == "__main__":
     main()
