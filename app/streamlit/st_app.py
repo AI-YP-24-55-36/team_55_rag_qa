@@ -18,20 +18,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# primary_color = theme_settings.get("primary_color", "#8FAFBE")
-# st.markdown(
-#     f"""
-#     <style>
-#     .stApp {{
-#         font-family: sans-serif;
-#         background-color: {primary_color};
-#         color: white;
-#     }}
-#     </style>
-#     """,
-#     unsafe_allow_html=True,
-# )
-
 file_handler = RotatingFileHandler(
     'logs/app.log',           # Имя файла лога
     maxBytes=1024*1024,  # Максимальный размер файла
@@ -77,13 +63,13 @@ def main():
             data = valid_df
             logging.info("файл датасета загружен")
             st.write("Превью - первые 5 строк:")
+            data = data[:5000]
             st.dataframe(data.head(5))
 
         if valid_df is not None:
             if st.sidebar.checkbox("Показать информацию о данных"):
                 st.success(f"Всего {len(data)} строк")
                 st.success(f"Всего {len(data.columns)} столбца")
-
 
             if st.sidebar.checkbox("Проверить есть ли дубликаты"):
                 columns = data.columns
@@ -121,22 +107,27 @@ def main():
 
             st.sidebar.title("Графики")
 
+            def clear_other_checkboxes(checked_key):
+                for key in st.session_state.keys():
+                    if key != checked_key and st.session_state[key]:
+                        st.session_state[key] = False
+
             if uploaded_file is not None:
-                if st.sidebar.checkbox("Длины текстов"):
+                if st.sidebar.checkbox("Длины текстов", key="graph1", on_change=clear_other_checkboxes, args=("graph1",)):
                     new_data = length(data)
                     col_len = new_data.columns[-3:].to_list()
                     fig, ax = plot_length(new_data, col_len)
                     logging.info("график с длинами слов отрисован успешно")
                     st.pyplot(fig)
             if uploaded_file is not None:
-                if st.sidebar.checkbox("Частотность слов"):
+                if st.sidebar.checkbox("Частотность слов", key="graph2", on_change=clear_other_checkboxes, args=("graph2",)):
                     cols = data.columns
                     fig, ax = plot_top_words(data[cols[0]])
                     logging.info("график с частотностью слов отрисован успешно")
                     st.pyplot(fig)
 
             if uploaded_file is not None:
-                if st.sidebar.checkbox("Облако слов"):
+                if st.sidebar.checkbox("Облако слов", key="graph3", on_change=clear_other_checkboxes, args=("graph3",)):
                     cols = data.columns
                     fig, ax = plot_wordcloud(data[cols[0]])
                     logging.info("облако слов отрисовано успешно")
@@ -144,7 +135,8 @@ def main():
 
             if uploaded_file is not None:
 
-                if st.sidebar.checkbox("t-SNE для топ-200 слов", help="Если корпус слов большой, то вычисление потребует некоторого времени"):
+                if st.sidebar.checkbox("t-SNE для топ-200 слов", key="graph4", on_change=clear_other_checkboxes, args=("graph4",),
+                        help="Если корпус слов большой, то вычисление потребует некоторого времени"):
                     cols = data.columns
                     fig, ax = plot_tsne(data[cols[0]])
                     logging.info("t-SNE отрисован успешно")
@@ -177,7 +169,7 @@ def main():
 
 
             st.sidebar.title("Модель")
-            if st.sidebar.checkbox("Настроить"):
+            if st.sidebar.checkbox("Настроить", key="model", on_change=clear_other_checkboxes, args=("model",)):
 
                 st.sidebar.subheader("Параметры векторизации")
 
