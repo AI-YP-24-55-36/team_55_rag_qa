@@ -62,7 +62,7 @@ def plot_top_words(text):
     plt.subplots_adjust(hspace=0.5, wspace=0.5)
     return fig, axes
 
-# Функция 
+# Функция
 def plot_wordcloud(text):
     # соединяем весь текст в список для подачи в wordcloud.generate
     STOPWORDS = set(nltk.corpus.stopwords.words('english') + ['-', '-', '–', '&', '/'])
