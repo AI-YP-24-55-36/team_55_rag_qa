@@ -4,35 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ba0c1de1-70ee-409a-8da5-98de5e4cfcbb" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/streamlit.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/config.toml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/eda.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/st_app.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/validate_df.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/../../.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/.idea/misc.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/.idea/streamlit.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/.idea/vcs.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/config.toml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/eda.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/logs/app.log.1" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/logs/app.log.2" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/logs/app.log.3" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/logs/app.log.4" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/logs/app.log.5" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/st_app.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../streamlit/streamlit/validate_df.py" beforeDir="false" />
-    </list>
+    <list default="true" id="ba0c1de1-70ee-409a-8da5-98de5e4cfcbb" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
