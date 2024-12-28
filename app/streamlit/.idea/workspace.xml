@@ -7,6 +7,7 @@
     <list default="true" id="ba0c1de1-70ee-409a-8da5-98de5e4cfcbb" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/st_app.py" beforeDir="false" afterPath="$PROJECT_DIR$/st_app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/validate_df.py" beforeDir="false" afterPath="$PROJECT_DIR$/validate_df.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

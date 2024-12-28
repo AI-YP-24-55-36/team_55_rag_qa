@@ -1,14 +1,8 @@
 import streamlit as st
-import pandas as pd
 from validate_df import validate_csv
-import io
-import toml
 from eda import plot_length, length, plot_top_words, plot_wordcloud, prep, plot_tsne
 import logging
 from logging.handlers import RotatingFileHandler
-import sys
-import os
-
 
 
 st.set_page_config(
@@ -20,7 +14,7 @@ st.set_page_config(
 
 file_handler = RotatingFileHandler(
     'logs/app.log',           # Имя файла лога
-    maxBytes=1024*1024,  # Максимальный размер файла
+    maxBytes=10*1024*1024,  # Максимальный размер файла
     backupCount=5         # Количество backup-файлов
 )
 
@@ -63,7 +57,7 @@ def main():
             data = valid_df
             logging.info("файл датасета загружен")
             st.write("Превью - первые 5 строк:")
-            data = data[:5000]
+            # data = data[:5000]
             st.dataframe(data.head(5))
 
         if valid_df is not None:
@@ -93,13 +87,13 @@ def main():
                     missing_rows = data[data.isnull().any(axis=1)].index.tolist()
                     miss = data[data.isnull().any(axis=1)]
                     # Вывод списка строк с пропущенными значениями
-                    st.write("Список строк с пропущенными значениями:")
+                    st.success("Список строк с пропущенными значениями:")
                     for row in missing_rows:
                         st.write(f"Строка {row}")
                     if st.sidebar.button("строки с пропусками"):
                         if missing_rows:
                             st.warning("Строки с пропущенными значениями:")
-                            st.write(miss)
+                            st.write(miss.head(10))
                         else:
                             st.write("В датасете нет пропущенных значений.")
                 else:
@@ -244,14 +238,12 @@ def main():
                     on_change=on_ngram,
                 )
 
-
-                max_df = on_slider_change_max_df()
-                min_df = on_slider_change_min_df()
-                max_features = on_slider_change_max_features()
-                smooth_idf = on_sublinear_tf()
-                ngramm = on_ngram()
-
-
+                hyperparameters = {}
+                hyperparameters["max_df"] = on_slider_change_max_df()
+                hyperparameters["min_df"] = on_slider_change_min_df()
+                hyperparameters["max_features"] = on_slider_change_max_features()
+                hyperparameters ["smooth_idf"] = on_sublinear_tf()
+                hyperparameters["sublinear_tf"] = on_ngram()
 
                 st.sidebar.subheader("Выбор метрики близости")
                 def on_distance():
@@ -320,8 +312,6 @@ def main():
                     st.write(st.session_state.repeating)
                     test = st.session_state.repeating
                     # inference  = model(test)
-
-
 
 if __name__ == "__main__":
     main()
