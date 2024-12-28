@@ -2,12 +2,10 @@ import streamlit as st
 import pandas as pd
 import logging
 from logging.handlers import RotatingFileHandler
-import sys
-import os
 
 file_handler = RotatingFileHandler(
     'logs/app.log',           # Имя файла лога
-    maxBytes=1024*1024,  # Максимальный размер файла
+    maxBytes=10*1024*1024,  # Максимальный размер файла
     backupCount=5         # Количество backup-файлов
 )
 
