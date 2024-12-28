@@ -3,7 +3,7 @@ from http import HTTPStatus
 from qdrant_client import QdrantClient, models
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
-from qdrant.load_qdrant import save_vectors_batch, search_similar_texts
+from qdrant.load_qdrant import save_vectors_batch, search_similar_texts, check_questions
 from .schemas import *
 
 DB = {"datasets": {}, "models": {}}
@@ -13,7 +13,8 @@ qdrant_client = QdrantClient(url="http://localhost:6333", timeout=1000)
 
     
 # API endpoints
-@router.post("/load_dataset", response_model=MutlipleApiResponse, status_code=HTTPStatus.CREATED)
+@router.post("/load_dataset", response_model=MutlipleApiResponse, status_code=HTTPStatus.CREATED,
+             description='Загрузка датасета')
 async def fit(request: DatasetRequest):
     global DB
     rs = []
@@ -27,13 +28,16 @@ async def fit(request: DatasetRequest):
     return MutlipleApiResponse(root=rs)
 
 '''Обучение на датасете и загрузка в qdrant'''
-@router.post("/fit_save", response_model=MutlipleApiResponse, status_code=HTTPStatus.CREATED)
+#  TODO Добавить поле distance для qdrant
+@router.post("/fit_save", response_model=MutlipleApiResponse, status_code=HTTPStatus.CREATED,
+             description='Обучение на датасете и загрузка в qdrant')
 async def fit(request: FitRequestList):
     global DB
     global qdrant_client
     # TODO Обучение нескольких моделей в 1 запросе
     request = request.root[0]
     model_id = request.model_id
+    hyperparameters = request.hyperparameters
     if not model_id:
         raise HTTPException(status_code=400, detail="Требуется ID модели")
     elif model_id in DB["models"]:
@@ -43,6 +47,8 @@ async def fit(request: FitRequestList):
         raise HTTPException(status_code=400, detail="Коллекция qdrant для данной модели уже существует") 
     model_type = request.ml_model_type
     if model_type == "tf-idf":
+        if 'ngram_range' in hyperparameters:
+            hyperparameters['ngram_range'] = tuple(hyperparameters['ngram_range'])
         model = TfidfVectorizer(**request.hyperparameters)
     else:
         raise HTTPException(
@@ -59,11 +65,13 @@ async def fit(request: FitRequestList):
             status_code=400, detail="Некорректные данные для обучения")
     save_vectors_batch(qdrant_client, cur_ds['context'], vectorized_contexts, model_id)
     DB["models"][model_id] = {"type": model_type,
-                        "model": model, "train_data": cur_ds['context'], "is_loaded": False}
-    return MutlipleApiResponse(root=[{'message': f"Данные преобразованы с помощью модели '{model_id}'"}])
+                        "model": model, "train_data": cur_ds['context'], "is_loaded": False,
+                        "hyperparameters": hyperparameters, "dataset": cur_ds_nm}
+    return MutlipleApiResponse(root=[{'message': f"Данные преобразованы и загружены в qdrant с помощью модели '{model_id}'"}])
 
 
-@router.post("/load_model", response_model=MutlipleApiResponse)
+@router.post("/load_model", response_model=MutlipleApiResponse,
+             description="Загрузка модели в RAM (TODO)")
 async def load_model(request: LoadRequest):
     global DB
     model_id = request.model_id
@@ -74,7 +82,8 @@ async def load_model(request: LoadRequest):
     return MutlipleApiResponse(root=[{'message': f"Модель '{model_id}' загружена"}])
 
 
-@router.post("/unload_model", response_model=MutlipleApiResponse)
+@router.post("/unload_model", response_model=MutlipleApiResponse,
+             description="Выгрузка моделей из RAM (TODO)")
 async def unload_model(
 ):
     global DB
@@ -90,7 +99,8 @@ async def unload_model(
             status_code=400, detail="No model is currently loaded")
     return MutlipleApiResponse(root=res)
 
-@router.post("/find_context", response_model=FindCntxtsResponse)
+@router.post("/find_context", response_model=FindCntxtsResponse, 
+             description='Поиск контекста для вопроса')
 async def find_context(request: PredictRequest):
     model_id = request.model_id
     question = request.question
@@ -116,16 +126,32 @@ async def find_context(request: PredictRequest):
         rs.append({'model_id': model_id, 'context': source_text, 'score': score, 'point_id': point_id})
     return FindCntxtsResponse(root=rs)
 
-@router.get("/get_datasets", response_model=DsListResponse)
+@router.post("/quality_test", response_model=AccuracyResponse, 
+             description='Оценка точности модели')
+async def quality_test(request: LoadRequest):
+    global DB
+    model_id = request.model_id
+    model = DB["models"][model_id]["model"]
+    cur_ds_nm = DB["models"][model_id]["dataset"]
+    cur_ds = DB["datasets"][cur_ds_nm]
+    accuracy = check_questions(qdrant_client, cur_ds, model, model_id)
+    return {'accuracy': accuracy}
+
+@router.get("/get_datasets", response_model=DsListResponse,
+            description='Получить список загруженных датасетов')
 async def get_datasets():
     global DB
     return {"datasets_nm": DB["datasets"].keys()}
 
-@router.get("/list_models", response_model=ModelsListResponse)
+# TODO вывести гиперпараметры
+@router.get("/list_models", response_model=ModelsListResponse,
+            description='Получить список загруженных и обученных моделей')
 async def list_models():
     global DB
     model_list = [
-        {"model_id": model_id, "type": data["type"]}
+        {"model_id": model_id, 
+         "type": data["type"],
+         "hyperparameters": data["hyperparameters"]}
         for model_id, data in DB["models"].items()
     ]
     return ModelsListResponse(root=[{'models': model_list}])

@@ -32,10 +32,11 @@ def save_vectors_batch(client, source_texts: List[str], vectors: csr_matrix, col
                 },
             )
         )
-    
-    client.upsert(
+    client.upload_points(
         collection_name=collection_name,
-        points=points
+        points=points,
+        parallel=4,
+        max_retries=3,
     )
 
 def search_similar_texts(
@@ -68,3 +69,27 @@ def search_similar_texts(
     ]
     
     return found_texts
+
+# TODO оптимизировать
+def check_questions(client, df, model, collection_name):
+    correct = 0
+    query_text = df['question']
+    query_vecs = model.transform(query_text)
+    for idx, row in df.iterrows():
+        query_vec = query_vecs[idx]
+        query_indices = query_vec.indices.tolist()
+        query_data = query_vec.data.tolist()
+        result = client.query_points(
+            collection_name=collection_name,
+            query=models.SparseVector(
+                indices=query_indices,
+                values=query_data,
+            ),
+            using="text",
+            limit=1
+        )
+        top_n = len(result.points)
+        res = [result.points[i].payload['source_text'] for i in range(top_n)]
+        if row['context'] in res:
+            correct += 1
+    return correct / len(df)
