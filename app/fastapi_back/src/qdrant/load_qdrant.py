@@ -76,8 +76,6 @@ def search_similar_texts(
     return found_texts
 
 # TODO оптимизировать
-
-
 def check_questions(client, df, model, collection_name) -> dict[str, float | List[float]]:
     correct = 0
     query_text = df['question']

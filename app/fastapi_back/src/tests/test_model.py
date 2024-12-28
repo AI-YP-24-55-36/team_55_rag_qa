@@ -130,12 +130,6 @@ def test_remove_all_models():
     response = client.delete("/api/v1/models/remove_all")
     assert response.status_code == 200
 
-    # Попытка удалить, когда моделей нет
-
-    # response = client.delete("/api/v1/models/remove_all")
-    # assert response.status_code == 404
-    # assert "Models not found" in response.json()["detail"]
-
 
 # Тестирование на большом датасете
 def test_load_full_dataset():
@@ -235,7 +229,7 @@ def test_full_list_models():
 def test_check():
     request = {
         "model_id": "model1",
-        "threshold": None
+        "threshold": 1000
     }
     response = client.post("/api/v1/models/quality_test", json=request)
     assert response.status_code == 200
