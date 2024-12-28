@@ -1,7 +1,7 @@
 import streamlit as st
 from validate_df import validate_csv
 from eda import plot_length, length, plot_top_words, plot_wordcloud, prep, plot_tsne
-
+from project_logger import log_and_display
 
 st.set_page_config(
     page_title="RAG",
@@ -12,7 +12,6 @@ st.set_page_config(
 
 
 def main():
-
     # загрузка заголовка приложения
     st.title("Обучение модели для чат-бота на основе RAG")
     st.markdown("""
@@ -38,9 +37,8 @@ def main():
         valid_df = validate_csv(uploaded_file)
         # Если валидация прошла успешно
         if valid_df is not None:
-            st.success("Файл успешно загружен и проверен!")
+            log_and_display("Файл успешно загружен и проверен!", level="success", display_func=st.success)
             data = valid_df
-            # logging.info("файл датасета загружен")
             st.write("Превью - первые 5 строк:")
             # data = data[:5000]
             st.dataframe(data.head(5))
@@ -67,7 +65,6 @@ def main():
                 # Проверка наличия пропущенных значений
                 if data.isnull().values.any():
                     st.warning("В датасете есть пропущенные значения.")
-
                     # Получение списка строк с пропущенными значениями
                     missing_rows = data[data.isnull().any(axis=1)].index.tolist()
                     miss = data[data.isnull().any(axis=1)]
@@ -92,33 +89,36 @@ def main():
                         st.session_state[key] = False
 
             if uploaded_file is not None:
-                if st.sidebar.checkbox("Длины текстов", key="graph1", on_change=clear_other_checkboxes, args=("graph1",)):
+                if st.sidebar.checkbox("Длины текстов", key="graph1", on_change=clear_other_checkboxes,
+                                       args=("graph1",)):
                     new_data = length(data)
                     col_len = new_data.columns[-3:].to_list()
                     fig, ax = plot_length(new_data, col_len)
-                    # logging.info("график с длинами слов отрисован успешно")
+                    log_and_display("график с длинами слов отрисован успешно", level="info")
                     st.pyplot(fig)
             if uploaded_file is not None:
-                if st.sidebar.checkbox("Частотность слов", key="graph2", on_change=clear_other_checkboxes, args=("graph2",)):
+                if st.sidebar.checkbox("Частотность слов", key="graph2", on_change=clear_other_checkboxes,
+                                       args=("graph2",)):
                     cols = data.columns
                     fig, ax = plot_top_words(data[cols[0]])
-                    # logging.info("график с частотностью слов отрисован успешно")
+                    log_and_display("график с частотностью слов отрисован успешно", level="info")
                     st.pyplot(fig)
 
             if uploaded_file is not None:
                 if st.sidebar.checkbox("Облако слов", key="graph3", on_change=clear_other_checkboxes, args=("graph3",)):
                     cols = data.columns
                     fig, ax = plot_wordcloud(data[cols[0]])
-                    # logging.info("облако слов отрисовано успешно")
+                    log_and_display("облако слов отрисовано успешно", level="info")
                     st.pyplot(fig)
 
             if uploaded_file is not None:
 
-                if st.sidebar.checkbox("t-SNE для топ-200 слов", key="graph4", on_change=clear_other_checkboxes, args=("graph4",),
-                        help="Если корпус слов большой, то вычисление потребует некоторого времени"):
+                if st.sidebar.checkbox("t-SNE для топ-200 слов", key="graph4", on_change=clear_other_checkboxes,
+                                       args=("graph4",),
+                                       help="Если корпус слов большой, то вычисление потребует некоторого времени"):
                     cols = data.columns
                     fig, ax = plot_tsne(data[cols[0]])
-                    # logging.info("t-SNE отрисован успешно")
+                    log_and_display("t-SNE отрисован успешно", level="info")
                     st.pyplot(fig)
 
             st.sidebar.title("Препроцессинг")
@@ -127,8 +127,9 @@ def main():
                 if st.sidebar.button("Удалить дубликаты"):
                     columns = data.columns
                     if data.duplicated().values.any():
-                        data.drop_duplicates(keep = 'first', inplace = True)
-                        st.success(f"Строки с дубликатами удалены. Стало всего {len(data)} строк")
+                        data.drop_duplicates(keep='first', inplace=True)
+                        log_and_display(f"Строки с дубликатами удалены. Стало всего {len(data)} строк", level="success",
+                                        display_func=st.success)
                     else:
                         st.warning("В датасете нет дубликатов")
 
@@ -136,20 +137,23 @@ def main():
                 if st.sidebar.button("Удалить пропуски"):
                     if data.isnull().values.any():
                         data = data.dropna()
-                        st.success(f"Строки с пропусками удалены. Стало всего {len(data)} строк")
-                    else: st.warning("В датасете нет пропущенных значений")
+                        log_and_display(f"Строки с пропусками удалены. Стало всего {len(data)} строк", level="success",
+                                        display_func=st.success)
+                    else:
+                        st.warning("В датасете нет пропущенных значений")
 
             if uploaded_file is not None:
                 if st.sidebar.button("Очистить текст"):
                     cols = data.columns
                     data["clear_text"] = data[cols[0]].apply(lambda x: prep(x))
-                    st.success(f"Текст очищен от стоп-слов, от символов не являющихся буквами и цифрами, приведен к нижнему регистру, эту колонку можно подавать в модель для обучения")
+                    log_and_display(
+                        f"Текст очищен от стоп-слов, от символов не являющихся буквами и цифрами, приведен к нижнему регистру, эту колонку можно подавать в модель для обучения",
+                        level="success",
+                        display_func=st.success)
                     st.dataframe(data["clear_text"].head(10))
-
 
             st.sidebar.title("Модель")
             if st.sidebar.checkbox("Настроить", key="model", on_change=clear_other_checkboxes, args=("model",)):
-
                 st.sidebar.subheader("Параметры векторизации")
 
                 def on_slider_change_max_df():
@@ -227,10 +231,12 @@ def main():
                 hyperparameters["max_df"] = on_slider_change_max_df()
                 hyperparameters["min_df"] = on_slider_change_min_df()
                 hyperparameters["max_features"] = on_slider_change_max_features()
-                hyperparameters ["smooth_idf"] = on_sublinear_tf()
+                hyperparameters["smooth_idf"] = on_sublinear_tf()
                 hyperparameters["sublinear_tf"] = on_ngram()
+                log_and_display(f"гиперпараметры модели {hyperparameters}", level="info")
 
                 st.sidebar.subheader("Выбор метрики близости")
+
                 def on_distance():
                     st.write(f"Метрика: {st.session_state.distance}")
                     value = st.session_state.distance
@@ -244,12 +250,15 @@ def main():
                     on_change=on_distance,
                 )
 
+                qdrant_parameters = {}
                 distance = on_distance()
+                qdrant_parameters["distance"] = distance
+                log_and_display(f"гиперпараметры qdrant {qdrant_parameters}", level="info")
 
                 st.sidebar.subheader("Обучение модели")
 
                 if st.sidebar.button("Параметры"):
-                        st.success(f"Модель")
+                    st.success(f"Модель")
                 else:
                     st.warning("Модель не определена")
 
@@ -267,10 +276,10 @@ def main():
                 if "textarea" not in st.session_state:
                     st.session_state.textarea = ""
                 st.text_area("Введите текст для проверки работы модели",
-                                  height=200,
-                                  value="",
-                                  placeholder="Введите или скопируйте текст",
-                                key=key)
+                             height=200,
+                             value="",
+                             placeholder="Введите или скопируйте текст",
+                             key=key)
 
             if st.sidebar.checkbox("Инференс", key="infer", on_change=clear_other_checkboxes, args=("infer",)):
                 text_form("textarea")
@@ -284,10 +293,10 @@ def main():
                     st.write(st.session_state.textarea)
                     test = st.session_state.textarea
                     # inference  = model(test)
+                    log_and_display("Предикт выполнен успешно", level="success")
 
             if st.sidebar.checkbox("Повторить", key="repeat", on_change=clear_other_checkboxes, args=("repeat",)):
                 text_form("repeating")
-
                 if st.button('Отправить текст'):
                     if len(st.session_state.repeating):
                         st.success('Текст отправлен в модель')
@@ -297,6 +306,8 @@ def main():
                     st.write(st.session_state.repeating)
                     test = st.session_state.repeating
                     # inference  = model(test)
+                    log_and_display("Предикт выполнен успешно", level="success")
+
 
 if __name__ == "__main__":
     main()
