@@ -1,4 +1,4 @@
-from typing import Annotated, Dict, List, Any, TypedDict
+from typing import Annotated, Dict, List, Any, TypedDict, Optional
 from typing_extensions import TypedDict
 from pydantic import BaseModel, RootModel
 
@@ -44,6 +44,7 @@ class DsListResponse(BaseModel):
 class ModelElementResponse(BaseModel):
     model_id: str
     type: str
+    hyperparameters: Dict[str, Any]
 
 class VectorizeRequest(BaseModel):
     texts: List[str]
@@ -80,3 +81,6 @@ class FindCntxtResponse(BaseModel):
 
 class FindCntxtsResponse(RootModel):
     root: List[FindCntxtResponse]
+
+class AccuracyResponse(BaseModel):
+    accuracy: float
