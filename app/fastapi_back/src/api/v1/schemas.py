@@ -13,15 +13,11 @@ DatasetItm = Annotated[DatasetEntry,
                        "Датасет содержащий контекст, вопрос и ответ"]
 
 '''Модель данных для загрузки датасета'''
-
-
 class DatasetRequest(BaseModel):
-    datasets: Dict[str, List[DatasetEntry]]
+    datasets: Dict[str, List[DatasetItm]]
 
 
 '''Модель данных для обучения модели'''
-
-
 class FitRequest(BaseModel):
     hyperparameters: Dict[str, Any]
     model_id: str
@@ -34,23 +30,17 @@ class FitRequestList(RootModel):
 
 
 '''Модель данных для загрузки модели'''
-
-
 class LoadRequest(BaseModel):
     model_id: str
 
 
 '''Модель данных для предсказания используя предоставленные данные'''
-
-
 class PredictRequest(BaseModel):
     model_id: str
     question: str
 
 
 '''Модель данных для вывода списка датасетов.'''
-
-
 class DsListResponse(BaseModel):
     datasets_nm: List[str]
 
@@ -66,8 +56,6 @@ class VectorizeRequest(BaseModel):
 
 
 '''Модель данных для вывода списка моделей.'''
-
-
 class ModelListResponse(BaseModel):
     models: List[ModelElementResponse]
 
@@ -77,8 +65,6 @@ class ModelsListResponse(RootModel):
 
 
 '''Модель данных для ответа 1 строки.'''
-
-
 class ApiResponse(BaseModel):
     message: str
 
@@ -88,15 +74,11 @@ class MessageItem(BaseModel):
 
 
 '''Модель данных для ответа нескольких элементов.'''
-
-
 class MutlipleApiResponse(RootModel):
     root: List[MessageItem]
 
 
 '''Модель данных для ответа модели.'''
-
-
 class FindCntxtResponse(BaseModel):
     context: str
     score: float
@@ -105,8 +87,6 @@ class FindCntxtResponse(BaseModel):
 
 
 '''Модель данных для тестирования модели'''
-
-
 class CheckRequest(BaseModel):
     model_id: str
     threshold: Optional[int] = None

@@ -16,7 +16,7 @@ qdrant_client = QdrantClient(url="http://localhost:6333", timeout=1000)
 # API endpoints
 @router.post("/load_dataset", response_model=MutlipleApiResponse, status_code=HTTPStatus.CREATED,
              description='Загрузка датасета')
-async def fit(request: DatasetRequest):
+async def fit(request: Annotated[DatasetRequest, 'Датасеты в формате массива списков']):
     global DB
     rs = []
     # TODO Работа с несколькими датасетами
@@ -38,11 +38,11 @@ async def fit(request: DatasetRequest):
     return MutlipleApiResponse(root=rs)
 
 '''Обучение на датасете и загрузка в qdrant'''
-
-
 @router.post("/fit_save", response_model=MutlipleApiResponse, status_code=HTTPStatus.CREATED,
              description='Обучение на датасете и загрузка в qdrant')
-async def fit_save(request: FitRequestList):
+async def fit_save(request: Annotated[FitRequestList, '''Список моделей 
+                                      и гиперпараметров для обучения, 
+                                      векторизации и сохранения датасета''']):
     global DB
     global qdrant_client
     # TODO Обучение нескольких моделей в 1 запросе
@@ -93,7 +93,7 @@ async def fit_save(request: FitRequestList):
 
 @router.post("/load_model", response_model=MutlipleApiResponse,
              description="Загрузка модели в RAM (TODO)")
-async def load_model(request: LoadRequest):
+async def load_model(request: Annotated[LoadRequest, 'Модель для загрузки датасета в память']):
     global DB
     model_id = request.model_id
     if model_id not in DB["models"]:
@@ -107,8 +107,7 @@ async def load_model(request: LoadRequest):
 
 @router.post("/unload_model", response_model=MutlipleApiResponse,
              description="Выгрузка моделей из RAM (TODO)")
-async def unload_model(
-):
+async def unload_model():
     global DB
     res = []
     cntr = 0
@@ -127,7 +126,8 @@ async def unload_model(
 
 @router.post("/find_context", response_model=FindCntxtsResponse,
              description='Поиск контекста для вопроса')
-async def find_context(request: PredictRequest):
+async def find_context(request: Annotated[PredictRequest,
+                                          "Вопрос для поиска подходящего контекста"]):
     model_id = request.model_id
     question = request.question
     global DB
@@ -160,7 +160,8 @@ async def find_context(request: PredictRequest):
 
 @router.post("/quality_test", response_model=AccuracyResponse,
              description='Оценка точности и скорости работы модели')
-async def quality_test(request: CheckRequest):
+async def quality_test(request: Annotated[CheckRequest,
+                                          "Модель данных для тестирования датасета"]):
     global DB
     model_id = request.model_id
     model = DB["models"][model_id]["model"]
@@ -179,14 +180,14 @@ async def quality_test(request: CheckRequest):
 
 
 @router.get("/get_datasets", response_model=DsListResponse,
-            description='Получить список загруженных датасетов')
+            description='Список загруженных датасетов')
 async def get_datasets():
     global DB
     return {"datasets_nm": DB["datasets"].keys()}
 
 # TODO вывести гиперпараметры
 @router.get("/list_models", response_model=ModelsListResponse,
-            description='Получить список загруженных и обученных моделей')
+            description='Список загруженных и обученных моделей')
 async def list_models():
     global DB
     model_list = [
@@ -198,7 +199,8 @@ async def list_models():
     return ModelsListResponse(root=[{'models': model_list}])
 
 
-@router.delete("/remove/{model_id}", response_model=MutlipleApiResponse)
+@router.delete("/remove/{model_id}", response_model=MutlipleApiResponse,
+               description="Удаление модели по ее id")
 async def remove(model_id: str):
     global DB
     global qdrant_client
@@ -211,7 +213,8 @@ async def remove(model_id: str):
     return MutlipleApiResponse(root=[{'message': f"Model '{model_id}' removed"}])
 
 
-@router.delete("/remove_all", response_model=MutlipleApiResponse)
+@router.delete("/remove_all", response_model=MutlipleApiResponse,
+               description="Удаление всех моделей и коллекций в qdrant")
 def remove_all():
     global DB
     messages = [{'message': f"Model '{model_id}' removed"}
