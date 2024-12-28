@@ -109,7 +109,7 @@ class FindCntxtResponse(BaseModel):
 
 class CheckRequest(BaseModel):
     model_id: str
-    threshold: Optional[int]
+    threshold: Optional[int] = None
 
 
 class FindCntxtsResponse(RootModel):

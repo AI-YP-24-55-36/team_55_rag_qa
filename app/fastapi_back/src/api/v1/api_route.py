@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
+from logger import api_logger
 from http import HTTPStatus
-from qdrant_client import QdrantClient, models
+from qdrant_client import QdrantClient
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from qdrant.load_qdrant import save_vectors_batch, search_similar_texts, check_questions
@@ -27,10 +28,13 @@ async def fit(request: DatasetRequest):
     datasets = request.datasets
     for dataset_nm, dataset in datasets.items():
         if dataset_nm in DB['datasets']:
+            api_logger.error(f"Dataset '{dataset_nm}' download error")
             raise HTTPException(
                 status_code=400, detail="Датасет с таким названием уже был загружен")
         DB['datasets'][dataset_nm] = pd.DataFrame(dataset)
         rs.append({'message': f"Датасет '{dataset_nm}' загружен"})
+        api_logger.info(f"Dataset '{dataset_nm}' downloaded")
+
     return MutlipleApiResponse(root=rs)
 
 '''Обучение на датасете и загрузка в qdrant'''
@@ -38,7 +42,7 @@ async def fit(request: DatasetRequest):
 
 @router.post("/fit_save", response_model=MutlipleApiResponse, status_code=HTTPStatus.CREATED,
              description='Обучение на датасете и загрузка в qdrant')
-async def fit(request: FitRequestList):
+async def fit_save(request: FitRequestList):
     global DB
     global qdrant_client
     # TODO Обучение нескольких моделей в 1 запросе
@@ -46,11 +50,14 @@ async def fit(request: FitRequestList):
     model_id = request.model_id
     hyperparameters = request.hyperparameters
     if not model_id:
+        api_logger.error("fit_save endpoint need model_id")
         raise HTTPException(status_code=400, detail="Требуется ID модели")
     elif model_id in DB["models"]:
+        api_logger.error("not unique model_id")
         raise HTTPException(
             status_code=400, detail="Модель с таким ID уже загружена")
     if qdrant_client.collection_exists(collection_name=f"{model_id}"):
+        api_logger.error("not unique qdrant collection")
         raise HTTPException(
             status_code=400, detail="Коллекция qdrant для данной модели уже существует")
     model_type = request.ml_model_type
@@ -60,16 +67,20 @@ async def fit(request: FitRequestList):
                 hyperparameters['ngram_range'])
         model = TfidfVectorizer(**request.hyperparameters)
     else:
+        api_logger.error("unexpected model type")
         raise HTTPException(
             status_code=400, detail="Поддерживаемые типы моделей: tf-idf")
     cur_ds_nm = request.dataset_nm
     if cur_ds_nm not in DB["datasets"]:
+        api_logger.error("unexpected dataset")
         raise HTTPException(
             status_code=404, detail="Датасет с таким именем не был загружен")
     cur_ds = DB["datasets"][cur_ds_nm]
     try:
         vectorized_contexts = model.fit_transform(cur_ds['context'])
+        api_logger.info("model trained")
     except ValueError:
+        api_logger.error("incorrect train data")
         raise HTTPException(
             status_code=400, detail="Некорректные данные для обучения")
     save_vectors_batch(
@@ -86,9 +97,11 @@ async def load_model(request: LoadRequest):
     global DB
     model_id = request.model_id
     if model_id not in DB["models"]:
+        api_logger.error(f"model {model_id} not in db")
         raise HTTPException(
             status_code=404, detail=f"Модель '{model_id}' не обучена")
     DB["models"][model_id]['is_loaded'] = True
+    api_logger.info(f"model {model_id} loaded")
     return MutlipleApiResponse(root=[{'message': f"Модель '{model_id}' загружена"}])
 
 
@@ -103,8 +116,10 @@ async def unload_model(
         if vals['is_loaded'] is True:
             DB["models"][id]['is_loaded'] = False
             res.append({'message': f"Model '{id}' unloaded"})
+            api_logger.info(f"Model '{id}' unloaded")
             cntr += 1
     if cntr == 0:
+        api_logger.error(f"No model is currently loaded")
         raise HTTPException(
             status_code=400, detail="No model is currently loaded")
     return MutlipleApiResponse(root=res)
@@ -117,6 +132,7 @@ async def find_context(request: PredictRequest):
     question = request.question
     global DB
     if model_id not in DB["models"] or not DB["models"][model_id]["is_loaded"]:
+        api_logger.error(f"{model_id} not loaded")
         raise HTTPException(
             status_code=404, detail=f"Модель {model_id} не загружена"
         )
@@ -124,6 +140,7 @@ async def find_context(request: PredictRequest):
     try:
         vectorized_question = model.transform([question])
     except ValueError:
+        api_logger.error(f"incorrect question data")
         raise HTTPException(
             status_code=400, detail=f"Некорректные данные для преобразования"
         )
@@ -137,6 +154,7 @@ async def find_context(request: PredictRequest):
         point_id = text['point_id']
         rs.append({'model_id': model_id, 'context': source_text,
                   'score': score, 'point_id': point_id})
+    api_logger.info(f"contexts found")
     return FindCntxtsResponse(root=rs)
 
 
@@ -149,8 +167,14 @@ async def quality_test(request: CheckRequest):
     cur_ds_nm = DB["models"][model_id]["dataset"]
     threshold = request.threshold
     cur_ds = DB["datasets"][cur_ds_nm][:threshold]
-    res: dict[str, float | List[float]] = check_questions(
-        qdrant_client, cur_ds, model, model_id)
+    try:
+        res: dict[str, float | List[float]] = check_questions(
+            qdrant_client, cur_ds, model, model_id)
+    except Exception:
+        api_logger.error(f"quality_test unexpected error")
+        raise HTTPException(
+            status_code=500, detail="Ошибка при тестировании модели")
+    api_logger.info(f"quality checked")
     return res
 
 
@@ -179,6 +203,7 @@ async def remove(model_id: str):
     global DB
     global qdrant_client
     if model_id not in DB["models"]:
+        api_logger.info(f"model {model_id} not loaded but tried to delete")
         raise HTTPException(status_code=404, detail="Model not found")
     del DB["models"][model_id]
     if qdrant_client.collection_exists(collection_name=f"{model_id}"):
