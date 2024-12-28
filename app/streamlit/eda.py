@@ -8,7 +8,9 @@ import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.manifold import TSNE
 
+
 # длины текстов в словах(токенах)
+
 def length(df):
     columns = df.columns
     for col in columns:
@@ -117,3 +119,4 @@ def plot_tsne(text):
     plt.title('t-SNE Визуализация для 100 самых частых слов', fontsize=15)
     plt.show()
     return fig, ax
+

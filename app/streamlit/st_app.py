@@ -1,8 +1,6 @@
 import streamlit as st
 from validate_df import validate_csv
 from eda import plot_length, length, plot_top_words, plot_wordcloud, prep, plot_tsne
-import logging
-from logging.handlers import RotatingFileHandler
 
 
 st.set_page_config(
@@ -11,19 +9,6 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="expanded",
 )
-
-file_handler = RotatingFileHandler(
-    'logs/app.log',           # Имя файла лога
-    maxBytes=10*1024*1024,  # Максимальный размер файла
-    backupCount=5         # Количество backup-файлов
-)
-
-# Настройка формата логирования
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-logger.addHandler(file_handler)
 
 
 def main():
@@ -55,7 +40,7 @@ def main():
         if valid_df is not None:
             st.success("Файл успешно загружен и проверен!")
             data = valid_df
-            logging.info("файл датасета загружен")
+            # logging.info("файл датасета загружен")
             st.write("Превью - первые 5 строк:")
             # data = data[:5000]
             st.dataframe(data.head(5))
@@ -111,20 +96,20 @@ def main():
                     new_data = length(data)
                     col_len = new_data.columns[-3:].to_list()
                     fig, ax = plot_length(new_data, col_len)
-                    logging.info("график с длинами слов отрисован успешно")
+                    # logging.info("график с длинами слов отрисован успешно")
                     st.pyplot(fig)
             if uploaded_file is not None:
                 if st.sidebar.checkbox("Частотность слов", key="graph2", on_change=clear_other_checkboxes, args=("graph2",)):
                     cols = data.columns
                     fig, ax = plot_top_words(data[cols[0]])
-                    logging.info("график с частотностью слов отрисован успешно")
+                    # logging.info("график с частотностью слов отрисован успешно")
                     st.pyplot(fig)
 
             if uploaded_file is not None:
                 if st.sidebar.checkbox("Облако слов", key="graph3", on_change=clear_other_checkboxes, args=("graph3",)):
                     cols = data.columns
                     fig, ax = plot_wordcloud(data[cols[0]])
-                    logging.info("облако слов отрисовано успешно")
+                    # logging.info("облако слов отрисовано успешно")
                     st.pyplot(fig)
 
             if uploaded_file is not None:
@@ -133,7 +118,7 @@ def main():
                         help="Если корпус слов большой, то вычисление потребует некоторого времени"):
                     cols = data.columns
                     fig, ax = plot_tsne(data[cols[0]])
-                    logging.info("t-SNE отрисован успешно")
+                    # logging.info("t-SNE отрисован успешно")
                     st.pyplot(fig)
 
             st.sidebar.title("Препроцессинг")
