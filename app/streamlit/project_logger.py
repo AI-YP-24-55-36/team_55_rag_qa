@@ -1,8 +1,6 @@
 
 import logging
 from logging.handlers import RotatingFileHandler
-
-
 def setup_logger():
     logger = logging.getLogger("StreamlitLogger")
     logger.setLevel(logging.DEBUG)
@@ -19,10 +17,9 @@ def setup_logger():
     logger.addHandler(handler)
     return logger
 
-
 logger = setup_logger()
 
-# Функция-обертка для записи в лог и вывод в Streamlit
+# обертка для записи в лог-файл и вывод в Streamlit
 def log_and_display(message, level="info", display_func=None):
     if level == "info":
         logger.info(message)
@@ -32,7 +29,6 @@ def log_and_display(message, level="info", display_func=None):
         logger.error("ERROR: " + message)
     else:
         logger.debug(message)
-
     # отображение в Streamlit
     if display_func:
         display_func(message)
