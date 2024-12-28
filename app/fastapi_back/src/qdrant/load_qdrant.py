@@ -2,6 +2,8 @@ from qdrant_client import QdrantClient, models
 from scipy.sparse import csr_matrix
 from typing import List
 import time
+from logger import qdrant_logger
+
 
 def save_vectors_batch(client, source_texts: List[str], vectors: csr_matrix, collection_name: str = "default"):
     client.create_collection(
@@ -15,6 +17,7 @@ def save_vectors_batch(client, source_texts: List[str], vectors: csr_matrix, col
             )
         },
     )
+    qdrant_logger.info(f"collection {collection_name} created")
     points = []
     for i in range(vectors.shape[0]):
         indices = vectors[i].indices.tolist()
@@ -38,6 +41,7 @@ def save_vectors_batch(client, source_texts: List[str], vectors: csr_matrix, col
         parallel=4,
         max_retries=3,
     )
+    qdrant_logger.info(f"collection {collection_name} filled")
 
 
 def search_similar_texts(
@@ -67,6 +71,7 @@ def search_similar_texts(
         }
         for point in results.points
     ]
+    qdrant_logger.info(f"texts found")
 
     return found_texts
 
