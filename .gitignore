@@ -20,6 +20,9 @@ site_build
 venv
 docs.zip
 archive.zip
+logs/
+ipynb_base/
+ipynb_eda/
 
 # vim temporary files
 *~
