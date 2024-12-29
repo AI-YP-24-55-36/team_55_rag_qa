@@ -89,13 +89,16 @@ def main():
                         st.session_state[key] = False
 
             if uploaded_file is not None:
+
+
                 if st.sidebar.checkbox("Длины текстов", key="graph1", on_change=clear_other_checkboxes,
                                        args=("graph1",)):
                     new_data = length(data)
                     col_len = new_data.columns[-3:].to_list()
-                    fig, ax = plot_length(new_data, col_len)
+                    fig = plot_length(new_data, col_len)
+                    st.plotly_chart(fig, use_container_width=True)
                     log_and_display("график с длинами слов отрисован успешно", level="info")
-                    st.pyplot(fig)
+                    # st.pyplot(fig)
             if uploaded_file is not None:
                 if st.sidebar.checkbox("Частотность слов", key="graph2", on_change=clear_other_checkboxes,
                                        args=("graph2",)):
