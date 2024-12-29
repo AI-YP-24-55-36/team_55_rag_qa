@@ -1,8 +1,9 @@
 import streamlit as st
 from validate_df import validate_csv
-from eda import plot_length, length, plot_top_words, plot_wordcloud, prep, plot_tsne
+from eda import plot_length, length, plot_top_words, plot_wordcloud, prep, plot_tsne, plot_bench
 from project_logger import log_and_display
 import requests
+import time
 
 st.set_page_config(
     page_title="RAG",
@@ -251,7 +252,6 @@ def main():
                         on_change=on_ngram,
                     )
 
-
                     hyperparameters = {}
                     # hyperparameters["ngram_range"] = on_ngram()
                     hyperparameters["max_df"] = on_slider_change_max_df()
@@ -331,7 +331,25 @@ def main():
                             log_and_display(f"Нет загруженных моделей", level="error", display_func=st.error)
 
                     if st.sidebar.button("Бенчмарк"):
-                        st.success(f"Будет график")
+                        # надо вызвать find_context 50 раз на 50 рандомных сэмплах и посчитать время и сохранить его, вывести min, max, mean
+                        samples = data["question"].sample(100, random_state=42)
+                        times = []
+                        for el in samples:
+                            start = time.time()
+                            context = {"model_id": model_id_load, "question": el}
+                            response = requests.post(f"{API_URL}/find_context", json=context)
+                            if response.status_code == 200:
+                                log_and_display("Тест выполнен успешно", level="success")
+                            else:
+                                log_and_display(f"Нет модели с таким id: {response.status_code}", level="error",
+                                                display_func=st.error)
+                            end = time.time()
+                            res = end - start
+                            times.append(res)
+                        mean = sum(times)/len(times)
+                        fig, ax = plot_bench(times)
+                        st.pyplot(fig)
+                        st.success(f"Среднее время извлечения одного ответа:{mean}")
 
 
                     if st.sidebar.button("Точность"):
@@ -361,11 +379,9 @@ def main():
 
                         response = requests.post(f"{API_URL}/find_context", json=context)
                         if response.status_code == 200:
-
                             request = response.json()[0]["context"]
                             score = response.json()[0]["score"]
                             id = response.json()[0]["point_id"]
-
                             log_and_display(f"Ответ: {request}", level="success", display_func=st.success)
                             log_and_display(f"Score: {score}, Идентификатор {id}", level="success", display_func=st.warning)
                             log_and_display("Предикт выполнен успешно", level="success")
