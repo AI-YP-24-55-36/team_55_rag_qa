@@ -314,19 +314,7 @@ def main():
                             log_and_display(f"Список датасетов: {df_list}", level="success",
                                         display_func=st.success)
 
-                    if st.sidebar.button("Выгрузка моделей"):
-                        response = requests.post(f"{API_URL}/unload_model", json={"message": "удаление"})
-                        try:
-                            for el in response.json():
-                                mess = el["message"]
-                                if response.status_code == 200:
-                                    log_and_display(f"Отправленные параметры: {mess}", level="success",
-                                                    display_func=st.success)
-                                else:
-                                    log_and_display(f"Модели с таким id не существует: {response.status_code}", level="error",
-                                                    display_func=st.error)
-                        except Exception as e:
-                            log_and_display(f"Нет загруженных моделей", level="error", display_func=st.error)
+
 
                     if st.sidebar.button("Бенчмарк"):
                         # надо вызвать find_context 50 раз на 50 рандомных сэмплах и посчитать время и сохранить его, вывести min, max, mean
@@ -360,6 +348,20 @@ def main():
                         else:
                             log_and_display(f"Ошибка при запросе API: {response.status_code}", level="error",
                                             display_func=st.error)
+
+                    if st.sidebar.button("Выгрузка моделей"):
+                        response = requests.post(f"{API_URL}/unload_model", json={"message": "удаление"})
+                        try:
+                            for el in response.json():
+                                mess = el["message"]
+                                if response.status_code == 200:
+                                    log_and_display(f"Отправленные параметры: {mess}", level="success",
+                                                    display_func=st.success)
+                                else:
+                                    log_and_display(f"Модели с таким id не существует: {response.status_code}", level="error",
+                                                    display_func=st.error)
+                        except Exception as e:
+                            log_and_display(f"Нет загруженных моделей", level="error", display_func=st.error)
 
 
                 if st.sidebar.checkbox("Инференс", key="infer", on_change=clear_other_checkboxes, args=("infer",)):
