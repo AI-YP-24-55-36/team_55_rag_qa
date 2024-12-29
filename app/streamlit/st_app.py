@@ -182,7 +182,6 @@ def main():
                     st.sidebar.subheader("Параметры векторизации")
 
                     def on_slider_change_max_df():
-                        st.write(f"Выбранное значение max_df: {st.session_state.slider_value_max_df}")
                         value = st.session_state.slider_value_max_df
                         return value
 
@@ -190,44 +189,41 @@ def main():
                         "max_df",
                         min_value=0.0,
                         max_value=1.0,
-                        value=0.8,
+                        value=0.85,
                         step=0.1,
                         key="slider_value_max_df",
                         on_change=on_slider_change_max_df,
                     )
 
                     def on_slider_change_min_df():
-                        st.write(f"Выбранное значение min_df: {st.session_state.slider_value_min_df}")
                         value = st.session_state.slider_value_min_df
                         return value
 
                     st.sidebar.slider(
                         "min_df",
-                        min_value=0.0,
-                        max_value=1.0,
-                        value=1.0,
-                        step=0.1,
+                        min_value=1,
+                        max_value=10,
+                        value=3,
+                        step=1,
                         key="slider_value_min_df",
                         on_change=on_slider_change_min_df,
                     )
 
                     def on_slider_change_max_features():
-                        st.write(f"Выбранное значение max_features: {st.session_state.max_features}")
                         value = st.session_state.max_features
                         return value
 
                     st.sidebar.slider(
                         "max_features",
-                        min_value=1000,
-                        max_value=30000,
-                        value=9000,
-                        step=500,
+                        min_value=20000,
+                        max_value=100000,
+                        value=50000,
+                        step=1000,
                         key="max_features",
                         on_change=on_slider_change_max_features,
                     )
 
                     def on_sublinear_tf():
-                        st.write(f"Выбранное значение sublinear_tf: {st.session_state.sublinear_tf}")
                         value = st.session_state.sublinear_tf
                         return value
 
@@ -240,24 +236,23 @@ def main():
                     )
 
                     def on_ngram():
-                        st.write(f"Выбранное значение ngram_range: {st.session_state.ngram_range}")
                         value = st.session_state.ngram_range
                         return value
 
                     st.sidebar.radio(
                         "ngram_range",
                         [(1, 1), (1, 2), (1, 3)],
-                        index=0,
+                        index=1,
                         key="ngram_range",
                         on_change=on_ngram,
                     )
 
                     hyperparameters = {}
-                    # hyperparameters["ngram_range"] = on_ngram()
+                    hyperparameters["ngram_range"] = on_ngram()
                     hyperparameters["max_df"] = on_slider_change_max_df()
-                    # hyperparameters["min_df"] = on_slider_change_min_df()
-                    # hyperparameters["max_features"] = on_slider_change_max_features()
-                    # hyperparameters["sublinear_tf"] = on_sublinear_tf()
+                    hyperparameters["min_df"] = on_slider_change_min_df()
+                    hyperparameters["max_features"] = on_slider_change_max_features()
+                    hyperparameters["sublinear_tf"] = on_sublinear_tf()
                     log_and_display(f"гиперпараметры модели {hyperparameters}", level="info")
                     model_id = st.sidebar.text_input("model_id", max_chars=20)
 
@@ -271,12 +266,15 @@ def main():
                         st.warning('Параметры отправлены в модель, ждем ответ...')
                         fit_save.append(fit_p)
                         response = requests.post(f"{API_URL}/fit_save", json=fit_save)
-                        mess = response.json()[0]["message"]
-                        if response.status_code == 201:
-                            log_and_display(f"{mess}", level="success", display_func=st.success)
+                        if isinstance(response.json(), dict):
+                            log_and_display(f"{response.json()}", level="warning", display_func=st.warning)
                         else:
-                            log_and_display(f"Ошибка при запросе API: {response.status_code}", level="error",
-                                            display_func=st.error)
+                            mess = response.json()[0]["message"]
+                            if response.status_code == 201:
+                                log_and_display(f"{mess}", level="success", display_func=st.success)
+                            else:
+                                log_and_display(f"Ошибка при запросе API: {response.status_code}", level="error", display_func=st.error)
+
 
                     st.sidebar.subheader("Обучение модели")
                     model_id_load = st.sidebar.text_input("model_id_load", max_chars=20)
@@ -349,11 +347,11 @@ def main():
                         mean = sum(times)/len(times)
                         fig, ax = plot_bench(times)
                         st.pyplot(fig)
-                        st.success(f"Среднее время извлечения одного ответа:{mean}")
+                        st.success(f"Среднее время извлечения одного ответа: {mean} секунды")
 
 
                     if st.sidebar.button("Точность"):
-                        params = {"model_id" : model_id_load, "threshold":1200}
+                        params = {"model_id" : model_id_load, "threshold":len(data)}
                         response = requests.post(f"{API_URL}/quality_test", json=params)
                         acc = response.json()["accuracy"]*100
                         if response.status_code == 200:
