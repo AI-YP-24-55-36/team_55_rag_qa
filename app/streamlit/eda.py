@@ -7,6 +7,8 @@ import nltk
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.manifold import TSNE
+from plotly.subplots import make_subplots
+import plotly.express as px
 
 
 # длины текстов в словах(токенах)
@@ -18,13 +20,23 @@ def length(df):
     return df
 
 def plot_length(df, col):
-    sns.set_theme(palette='pastel', font_scale=0.9)
-    fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(12, 10))
-    sns.histplot(df[col[0]], ax=axes[0]).set_title(f"Количество слов в колонке {col[0]}")
-    sns.histplot(df[col[1]], ax=axes[1]).set_title(f"Количество слов в колонке {col[1]}")
-    sns.histplot(df[col[2]], ax=axes[2]).set_title(f"Количество слов в колонке {col[2]}")
-    plt.subplots_adjust(hspace=0.5)
-    return fig, axes
+    fig = make_subplots(rows=3, cols=1, subplot_titles=(f"{col[0]}", f"{col[1]}", f"{col[2]}"))
+    fig1 = px.histogram(df, x=col[0])
+    fig2 = px.histogram(df, x=col[1])
+    fig3 = px.histogram(df, x=col[2])
+    fig.add_trace(fig1['data'][0], row=1, col=1)
+    fig.add_trace(fig2['data'][0], row=2, col=1)
+    fig.add_trace(fig3['data'][0], row=3, col=1)
+    fig.update_layout(
+        title="Распределение количества слов по каждой колонке с текстом",
+        xaxis_title=f"{col[0]}",
+        yaxis_title="Количество",
+        height=1000,
+        width=800,
+        template="seaborn",
+    )
+    fig.update_traces(marker_color='orange', opacity=0.5)
+    return fig
 
 # частотность, функция, токенизирует по словам переданный ей текст в список слов, возвращает корпус токенов
 def corpus(text):
