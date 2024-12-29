@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# logs
+
+app/streamlit/logs
+app/streamlit/.idea
+app/streamlit/.venv
+
 # C extensions
 *.so
 
