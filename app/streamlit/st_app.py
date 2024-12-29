@@ -273,23 +273,22 @@ def main():
                         fit_p["dataset_nm"] = uploaded_file.name
                         st.success('Параметры отправлены в модель')
                         fit_save.append(fit_p)
-                        print(fit_save)
                         response = requests.post(f"{API_URL}/fit_save", json=fit_save)
+                        mess = response.json()[0]["message"]
                         if response.status_code == 201:
-                            log_and_display(f"Отправленные параметры: {response.json()}", level="success", display_func=st.success)
+                            log_and_display(f"{mess}", level="success", display_func=st.success)
                         else:
                             log_and_display(f"Ошибка при запросе API: {response.status_code}", level="error",
                                             display_func=st.error)
 
-
                     st.sidebar.subheader("Обучение модели")
                     model_id_load = st.sidebar.text_input("model_id_load", max_chars=20)
                     model_load = {"model_id":model_id_load}
-                    print(model_id_load)
                     if st.sidebar.button("Загрузка"):
                         response = requests.post(f"{API_URL}/load_model", json=model_load)
                         if response.status_code == 200:
-                            log_and_display(f"Отправленные параметры: {response.json()}", level="success",
+                            mess = response.json()[0]["message"]
+                            log_and_display(f"Отправленные параметры: {mess}", level="success",
                                             display_func=st.success)
                         else:
                             log_and_display(f"Ошибка при запросе API: {response.status_code}", level="error",
@@ -297,11 +296,14 @@ def main():
 
                     if st.sidebar.button("Выгрузка моделей"):
                         response = requests.post(f"{API_URL}/unload_model", json={"message": "удаление"})
+                        mess = response.json()[0]["message"]
+                        print(mess)
+
                         if response.status_code == 200:
-                            log_and_display(f"Отправленные параметры: {response.json()}", level="success",
+                            log_and_display(f"Отправленные параметры: {mess}", level="success",
                                             display_func=st.success)
                         else:
-                            log_and_display(f"Ошибка при запросе API: {response.status_code}", level="error",
+                            log_and_display(f"Модели с таким id не существует: {response.status_code}", level="error",
                                             display_func=st.error)
 
                     if st.sidebar.button("Бенчмарк"):
@@ -317,8 +319,7 @@ def main():
                         else:
                             log_and_display(f"Ошибка при запросе API: {response.status_code}", level="error",
                                             display_func=st.error)
-                    else:
-                        st.warning("Нет модели")
+
 
                 if st.sidebar.checkbox("Инференс", key="infer", on_change=clear_other_checkboxes, args=("infer",)):
                     text_form("textarea")
@@ -343,27 +344,25 @@ def main():
 
                             log_and_display(f"Ответ: {request}", level="success", display_func=st.success)
                             log_and_display(f"Точность: {score}, Идентификатор {id}", level="success", display_func=st.warning)
+                            log_and_display("Предикт выполнен успешно", level="success")
                         else:
-                            log_and_display(f"Ошибка при запросе API: {response.status_code}", level="error",
+                            log_and_display(f"Нет модели с таким id: {response.status_code}", level="error",
                                             display_func=st.error)
-
-                        log_and_display("Предикт выполнен успешно", level="success")
-
                 st.sidebar.subheader("Удаление моделей")
                 model_id_remove = st.sidebar.text_input("model_id_remove", max_chars=20)
                 if st.sidebar.checkbox("Удалить модель", key="remove", on_change=clear_other_checkboxes, args=("remove",)):
                     response = requests.delete(f"{API_URL}/remove/{model_id_remove}")
                     if response.status_code == 200:
-                        log_and_display(f"Удалена модель {response.json()[0]}", level="success", display_func=st.success)
+                        log_and_display(f"Удалена модель {model_id_remove}", level="success", display_func=st.success)
                     else:
-                        log_and_display(f"Ошибка при запросе API: {response.status_code}", level="error",
+                        log_and_display(f"Модели с таким id не существует: {response.status_code}", level="error",
                                         display_func=st.error)
                 if st.sidebar.checkbox("Удалить все модели", key="remove_all", on_change=clear_other_checkboxes, args=("remove_all",)):
                     response = requests.delete(f"{API_URL}/remove_all")
                     if response.status_code == 200:
                         log_and_display(f"Удалены все модели", level="success", display_func=st.success)
                     else:
-                        log_and_display(f"Ошибка при запросе API: {response.status_code}", level="error",
+                        log_and_display(f"Нет моделей для удаления: {response.status_code}", level="error",
                                         display_func=st.error)
 
 
