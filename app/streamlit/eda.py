@@ -9,6 +9,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.manifold import TSNE
 from plotly.subplots import make_subplots
 import plotly.express as px
+import pandas as pd
 
 
 # длины текстов в словах(токенах)
@@ -132,3 +133,13 @@ def plot_tsne(text):
     plt.show()
     return fig, ax
 
+
+def plot_bench(times):
+    sns.set_theme(palette='pastel', font_scale=0.9)
+    times_s = pd.Series(times)
+    fig, ax = plt.subplots()
+    sns.lineplot(x=times_s.index, y=times_s.values, ax=ax, color="red")
+    ax.set_title("Время извлечения ответов из базы (на 100 сэмплах)")
+    ax.set_xlabel('вопрос')
+    ax.set_ylabel('время')
+    return fig, ax
