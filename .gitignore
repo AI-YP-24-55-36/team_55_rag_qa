@@ -6,6 +6,8 @@ __pycache__/
 # logs
 
 app/streamlit/logs
+app/streamlit/.idea
+app/streamlit/.venv
 
 # C extensions
 *.so
