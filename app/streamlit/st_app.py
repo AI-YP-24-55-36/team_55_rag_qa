@@ -104,9 +104,6 @@ def main():
                     st.success("В датасете нет пропущенных значений.")
 
             st.sidebar.title("Графики")
-
-
-
             if st.sidebar.checkbox("Длины текстов", key="graph1", on_change=clear_other_checkboxes,
                                    args=("graph1",)):
                 new_data = length(data)
@@ -294,31 +291,44 @@ def main():
                             log_and_display(f"Модели с таким id не существует: {response.status_code}", level="error",
                                             display_func=st.error)
 
-                    if st.sidebar.button("Список"):
+                    if st.sidebar.button("Список моделей"):
                         response = requests.get(f"{API_URL}/list_models")
-                        for models in response.json():
-                            for el in models["models"]:
-                                model = el["model_id"]
-                                type = el["type"]
-                                hparam = el["hyperparameters"]
-                                if response.status_code == 200:
-                                    log_and_display(f"Идентификатор модели: {model}, Тип модели: {type}, Гиперпараметры:{hparam}", level="success",
-                                                    display_func=st.success)
-                                else:
-                                    log_and_display(f"Нет загруженных моделей: {response.status_code}", level="error",
-                                                    display_func=st.error)
+                        if response.status_code == 200:
+                            if  response.json()[0]["models"] != []:
+                                for models in response.json():
+                                    for el in models["models"]:
+                                        model = el["model_id"]
+                                        type = el["type"]
+                                        hparam = el["hyperparameters"]
+                                        if response.status_code == 200:
+                                            log_and_display(f"Идентификатор модели: {model}, Тип модели: {type}, Гиперпараметры:{hparam}", level="success",
+                                                            display_func=st.success)
+                                        else:
+                                            log_and_display(f"Нет загруженных моделей: {response.status_code}", level="error",
+                                                            display_func=st.error)
+                            else:
+                                log_and_display(f"Нет загруженных моделей", level="error",
+                                                display_func=st.error)
+                    if st.sidebar.button("Список датасетов"):
+                        response = requests.get(f"{API_URL}/get_datasets")
+                        if response.status_code == 200:
+                            df_list = response.json()["datasets_nm"]
+                            log_and_display(f"Список датасетов: {df_list}", level="success",
+                                        display_func=st.success)
 
                     if st.sidebar.button("Выгрузка моделей"):
                         response = requests.post(f"{API_URL}/unload_model", json={"message": "удаление"})
-                        # print(response.json())
-                        for el in response.json():
-                            mess = el["message"]
-                            if response.status_code == 200:
-                                log_and_display(f"Отправленные параметры: {mess}", level="success",
-                                                display_func=st.success)
-                            else:
-                                log_and_display(f"Модели с таким id не существует: {response.status_code}", level="error",
-                                                display_func=st.error)
+                        try:
+                            for el in response.json():
+                                mess = el["message"]
+                                if response.status_code == 200:
+                                    log_and_display(f"Отправленные параметры: {mess}", level="success",
+                                                    display_func=st.success)
+                                else:
+                                    log_and_display(f"Модели с таким id не существует: {response.status_code}", level="error",
+                                                    display_func=st.error)
+                        except Exception as e:
+                            log_and_display(f"Нет загруженных моделей", level="error", display_func=st.error)
 
                     if st.sidebar.button("Бенчмарк"):
                         st.success(f"Будет график")
@@ -363,23 +373,24 @@ def main():
                             log_and_display(f"Нет модели с таким id: {response.status_code}", level="error",
                                             display_func=st.error)
                 st.sidebar.subheader("Удаление моделей")
-                model_id_remove = st.sidebar.text_input("model_id_remove", max_chars=20)
 
-                if st.sidebar.checkbox("Удалить модель", key="remove", on_change=clear_other_checkboxes, args=("remove",)):
-                    response = requests.delete(f"{API_URL}/remove/{model_id_remove}")
-                    if response.status_code == 200:
-                        log_and_display(f"Удалена модель {model_id_remove}", level="success", display_func=st.success)
-                    else:
-                        log_and_display(f"Модели с таким id не существует: {response.status_code}", level="error",
-                                        display_func=st.error)
-                if st.sidebar.checkbox("Удалить все модели", key="remove_all", on_change=clear_other_checkboxes, args=("remove_all",)):
+                model_id_remove = st.sidebar.text_input("model_id_remove", max_chars=20)
+                if model_id_remove is not None:
+                    if st.sidebar.button("Удалить модель"):
+                        response = requests.delete(f"{API_URL}/remove/{model_id_remove}")
+                        if response.status_code == 200:
+                            log_and_display(f"Удалена модель {model_id_remove}", level="success", display_func=st.success)
+                        else:
+                            log_and_display(f"Модели с таким id не существует: {response.status_code}", level="error",
+                                            display_func=st.error)
+
+                if st.sidebar.button("Удалить все модели"):
                     response = requests.delete(f"{API_URL}/remove_all")
                     if response.status_code == 200:
                         log_and_display(f"Удалены все модели", level="success", display_func=st.success)
                     else:
                         log_and_display(f"Нет моделей для удаления: {response.status_code}", level="error",
                                         display_func=st.error)
-
 
 
 if __name__ == "__main__":
