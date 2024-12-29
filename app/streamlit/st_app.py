@@ -271,7 +271,7 @@ def main():
                         fit_p["model_id"] = model_id
                         fit_p["ml_model_type"] = "tf-idf"
                         fit_p["dataset_nm"] = uploaded_file.name
-                        st.success('Параметры отправлены в модель')
+                        st.warning('Параметры отправлены в модель, ждем ответ...')
                         fit_save.append(fit_p)
                         response = requests.post(f"{API_URL}/fit_save", json=fit_save)
                         mess = response.json()[0]["message"]
@@ -291,23 +291,38 @@ def main():
                             log_and_display(f"Отправленные параметры: {mess}", level="success",
                                             display_func=st.success)
                         else:
-                            log_and_display(f"Ошибка при запросе API: {response.status_code}", level="error",
-                                            display_func=st.error)
-
-                    if st.sidebar.button("Выгрузка моделей"):
-                        response = requests.post(f"{API_URL}/unload_model", json={"message": "удаление"})
-                        mess = response.json()[0]["message"]
-                        print(mess)
-
-                        if response.status_code == 200:
-                            log_and_display(f"Отправленные параметры: {mess}", level="success",
-                                            display_func=st.success)
-                        else:
                             log_and_display(f"Модели с таким id не существует: {response.status_code}", level="error",
                                             display_func=st.error)
 
+                    if st.sidebar.button("Список"):
+                        response = requests.get(f"{API_URL}/list_models")
+                        for models in response.json():
+                            for el in models["models"]:
+                                model = el["model_id"]
+                                type = el["type"]
+                                hparam = el["hyperparameters"]
+                                if response.status_code == 200:
+                                    log_and_display(f"Идентификатор модели: {model}, Тип модели: {type}, Гиперпараметры:{hparam}", level="success",
+                                                    display_func=st.success)
+                                else:
+                                    log_and_display(f"Нет загруженных моделей: {response.status_code}", level="error",
+                                                    display_func=st.error)
+
+                    if st.sidebar.button("Выгрузка моделей"):
+                        response = requests.post(f"{API_URL}/unload_model", json={"message": "удаление"})
+                        # print(response.json())
+                        for el in response.json():
+                            mess = el["message"]
+                            if response.status_code == 200:
+                                log_and_display(f"Отправленные параметры: {mess}", level="success",
+                                                display_func=st.success)
+                            else:
+                                log_and_display(f"Модели с таким id не существует: {response.status_code}", level="error",
+                                                display_func=st.error)
+
                     if st.sidebar.button("Бенчмарк"):
                         st.success(f"Будет график")
+
 
                     if st.sidebar.button("Точность"):
                         params = {"model_id" : model_id_load, "threshold":1200}
@@ -335,7 +350,6 @@ def main():
                         context = {"model_id": model_id_inf, "question": test}
 
                         response = requests.post(f"{API_URL}/find_context", json=context)
-                        print(context)
                         if response.status_code == 200:
 
                             request = response.json()[0]["context"]
@@ -343,13 +357,14 @@ def main():
                             id = response.json()[0]["point_id"]
 
                             log_and_display(f"Ответ: {request}", level="success", display_func=st.success)
-                            log_and_display(f"Точность: {score}, Идентификатор {id}", level="success", display_func=st.warning)
+                            log_and_display(f"Score: {score}, Идентификатор {id}", level="success", display_func=st.warning)
                             log_and_display("Предикт выполнен успешно", level="success")
                         else:
                             log_and_display(f"Нет модели с таким id: {response.status_code}", level="error",
                                             display_func=st.error)
                 st.sidebar.subheader("Удаление моделей")
                 model_id_remove = st.sidebar.text_input("model_id_remove", max_chars=20)
+
                 if st.sidebar.checkbox("Удалить модель", key="remove", on_change=clear_other_checkboxes, args=("remove",)):
                     response = requests.delete(f"{API_URL}/remove/{model_id_remove}")
                     if response.status_code == 200:
