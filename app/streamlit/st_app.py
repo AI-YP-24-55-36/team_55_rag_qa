@@ -29,6 +29,53 @@ def text_form(key):
                  value="",
                  placeholder="Введите или скопируйте текст",
                  key=key)
+
+
+def benchmarks(id, samples):
+    times = []
+    context = {"model_id": id, "question": "test"}
+    response = requests.post(f"{API_URL}/find_context", json=context)
+    if response.status_code == 200:
+        for el in samples:
+            start = time.time()
+            context = {"model_id": id, "question": el}
+            response = requests.post(f"{API_URL}/find_context", json=context)
+            end = time.time()
+            res = end - start
+            times.append(res)
+        mean = sum(times) / len(times)
+        fig, ax = plot_bench(times)
+        times.clear()
+        st.pyplot(fig)
+        st.success(
+            f"Среднее время извлечения одного ответа: {mean} секунды  для модели {id}")
+    else:
+        log_and_display(f"Нет модели с таким id: {response.status_code}", level="error",
+                        display_func=st.error)
+
+
+def bench(test_id1, test_id2, data):
+    samples = data["question"].sample(100, random_state=42)
+    benchmarks(test_id1, samples)
+
+    if test_id2:
+        benchmarks(test_id2, samples)
+    else:
+        st.success("Нет модели для сравнения")
+
+
+def acc_exec(id):
+    params = {"model_id": id, "threshold": 1000}
+    response = requests.post(f"{API_URL}/quality_test", json=params)
+    if response.status_code == 200:
+        acc = response.json()["accuracy"] * 100
+        log_and_display(f"Точность для модели {id}: {acc} %", level="success",
+                        display_func=st.success)
+    else:
+        log_and_display(f"Ошибка при запросе API, неверные параметры: {response.status_code}", level="error",
+                        display_func=st.error)
+
+
 def main():
     # загрузка заголовка приложения
     st.title("Обучение модели для чат-бота на основе RAG")
@@ -124,7 +171,6 @@ def main():
                 fig, ax = plot_wordcloud(data[cols[0]])
                 log_and_display("облако слов отрисовано успешно", level="info")
                 st.pyplot(fig)
-
 
             if st.sidebar.checkbox("t-SNE для топ-200 слов", key="graph4", on_change=clear_other_checkboxes,
                                    args=("graph4",),
@@ -273,13 +319,13 @@ def main():
                             if response.status_code == 201:
                                 log_and_display(f"{mess}", level="success", display_func=st.success)
                             else:
-                                log_and_display(f"Ошибка при запросе API: {response.status_code}", level="error", display_func=st.error)
-
+                                log_and_display(f"Ошибка при запросе API: {response.status_code}", level="error",
+                                                display_func=st.error)
 
                     st.sidebar.subheader("Обучение модели")
                     model_id_load = st.sidebar.text_input("model_id_load", max_chars=20)
-                    model_load = {"model_id":model_id_load}
-                    if st.sidebar.button("Загрузка"):
+                    model_load = {"model_id": model_id_load}
+                    if st.sidebar.button("Загрузка модели"):
                         response = requests.post(f"{API_URL}/load_model", json=model_load)
                         if response.status_code == 200:
                             mess = response.json()[0]["message"]
@@ -292,17 +338,20 @@ def main():
                     if st.sidebar.button("Список моделей"):
                         response = requests.get(f"{API_URL}/list_models")
                         if response.status_code == 200:
-                            if  response.json()[0]["models"] != []:
+                            if response.json()[0]["models"] != []:
                                 for models in response.json():
                                     for el in models["models"]:
                                         model = el["model_id"]
                                         type = el["type"]
                                         hparam = el["hyperparameters"]
                                         if response.status_code == 200:
-                                            log_and_display(f"Идентификатор модели: {model}, Тип модели: {type}, Гиперпараметры:{hparam}", level="success",
-                                                            display_func=st.success)
+                                            log_and_display(
+                                                f"Идентификатор модели: {model}, Тип модели: {type}, Гиперпараметры:{hparam}",
+                                                level="success",
+                                                display_func=st.success)
                                         else:
-                                            log_and_display(f"Нет загруженных моделей: {response.status_code}", level="error",
+                                            log_and_display(f"Нет загруженных моделей: {response.status_code}",
+                                                            level="error",
                                                             display_func=st.error)
                             else:
                                 log_and_display(f"Нет загруженных моделей", level="error",
@@ -312,42 +361,22 @@ def main():
                         if response.status_code == 200:
                             df_list = response.json()["datasets_nm"]
                             log_and_display(f"Список датасетов: {df_list}", level="success",
-                                        display_func=st.success)
+                                            display_func=st.success)
 
-
+                    st.sidebar.subheader("Тестирование моделей")
+                    st.sidebar.markdown("- укажите id модели для теста")
+                    model_id_test1 = st.sidebar.text_input("model_id_test1", max_chars=20)
+                    model_id_test2 = st.sidebar.text_input("model_id_test2", max_chars=20)
 
                     if st.sidebar.button("Бенчмарк"):
-                        # надо вызвать find_context 50 раз на 50 рандомных сэмплах и посчитать время и сохранить его, вывести min, max, mean
-                        samples = data["question"].sample(100, random_state=42)
-                        times = []
-                        for el in samples:
-                            start = time.time()
-                            context = {"model_id": model_id_load, "question": el}
-                            response = requests.post(f"{API_URL}/find_context", json=context)
-                            if response.status_code == 200:
-                                log_and_display("Тест выполнен успешно", level="success")
-                            else:
-                                log_and_display(f"Нет модели с таким id: {response.status_code}", level="error",
-                                                display_func=st.error)
-                            end = time.time()
-                            res = end - start
-                            times.append(res)
-                        mean = sum(times)/len(times)
-                        fig, ax = plot_bench(times)
-                        st.pyplot(fig)
-                        st.success(f"Среднее время извлечения одного ответа: {mean} секунды")
-
+                        bench(model_id_test1, model_id_test2, data)
 
                     if st.sidebar.button("Точность"):
-                        params = {"model_id" : model_id_load, "threshold":len(data)}
-                        response = requests.post(f"{API_URL}/quality_test", json=params)
-                        acc = response.json()["accuracy"]*100
-                        if response.status_code == 200:
-                            log_and_display(f"Точность: {acc} %", level="success",
-                                            display_func=st.success)
+                        acc_exec(model_id_test1)
+                        if model_id_test2:
+                            acc_exec(model_id_test2)
                         else:
-                            log_and_display(f"Ошибка при запросе API: {response.status_code}", level="error",
-                                            display_func=st.error)
+                            st.success("Нет модели для сравнения")
 
                     if st.sidebar.button("Выгрузка моделей"):
                         response = requests.post(f"{API_URL}/unload_model", json={"message": "удаление"})
@@ -355,14 +384,14 @@ def main():
                             for el in response.json():
                                 mess = el["message"]
                                 if response.status_code == 200:
-                                    log_and_display(f"Отправленные параметры: {mess}", level="success",
+                                    log_and_display(f"Выгружена модель: {mess}", level="success",
                                                     display_func=st.success)
                                 else:
-                                    log_and_display(f"Модели с таким id не существует: {response.status_code}", level="error",
+                                    log_and_display(f"Модели с таким id не существует: {response.status_code}",
+                                                    level="error",
                                                     display_func=st.error)
                         except Exception as e:
                             log_and_display(f"Нет загруженных моделей", level="error", display_func=st.error)
-
 
                 if st.sidebar.checkbox("Инференс", key="infer", on_change=clear_other_checkboxes, args=("infer",)):
                     text_form("textarea")
@@ -379,12 +408,16 @@ def main():
 
                         response = requests.post(f"{API_URL}/find_context", json=context)
                         if response.status_code == 200:
-                            request = response.json()[0]["context"]
-                            score = response.json()[0]["score"]
-                            id = response.json()[0]["point_id"]
-                            log_and_display(f"Ответ: {request}", level="success", display_func=st.success)
-                            log_and_display(f"Score: {score}, Идентификатор {id}", level="success", display_func=st.warning)
-                            log_and_display("Предикт выполнен успешно", level="success")
+                            if response.json() != []:
+                                request = response.json()[0]["context"]
+                                score = response.json()[0]["score"]
+                                id = response.json()[0]["point_id"]
+                                log_and_display(f"Ответ: {request}", level="success", display_func=st.success)
+                                log_and_display(f"Score: {score}, Идентификатор {id}", level="success",
+                                                display_func=st.warning)
+                                log_and_display("Предикт выполнен успешно", level="success")
+                            else:
+                                log_and_display("Ответ не найден", level="success", display_func=st.success)
                         else:
                             log_and_display(f"Нет модели с таким id: {response.status_code}", level="error",
                                             display_func=st.error)
@@ -395,7 +428,8 @@ def main():
                     if st.sidebar.button("Удалить модель"):
                         response = requests.delete(f"{API_URL}/remove/{model_id_remove}")
                         if response.status_code == 200:
-                            log_and_display(f"Удалена модель {model_id_remove}", level="success", display_func=st.success)
+                            log_and_display(f"Удалена модель {model_id_remove}", level="success",
+                                            display_func=st.success)
                         else:
                             log_and_display(f"Модели с таким id не существует: {response.status_code}", level="error",
                                             display_func=st.error)
