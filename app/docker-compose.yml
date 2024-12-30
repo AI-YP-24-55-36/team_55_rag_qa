@@ -1,0 +1,77 @@
+version: '3.9'
+services:
+  backend:
+    build: fastapi_back
+    ports:
+      - 8000:8000
+    depends_on:
+      - qdrant
+    volumes:
+      - ./logs/backend:/app/logs
+    restart: always
+    networks:
+      - app
+    container_name: backend
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - 6333:6333
+    expose:
+      - 6333
+    volumes:
+      - ./qdrant_data:/app
+    restart: always
+    networks:
+      - app  
+    container_name: qdrant
+
+  loki:
+    image: grafana/loki:2.9.0
+    environment:
+      TZ: 
+        ${SYSTEM_TIMEZONE:-Europe/Moscow}
+    volumes:
+      - ./loki.yaml:/etc/loki/config.yaml
+    ports:
+      - 3100:3100
+    command: 
+      -config.file=/etc/loki/config.yaml
+    restart: always
+    networks:
+      - app
+    container_name: loki
+
+  promtail:
+    image: grafana/promtail:2.9.0
+    volumes:
+      - /tmp/promtail:/tmp/promtail
+      - ./logs:/app/logs
+      - ./promtail.yaml:/tmp/promtail/config.yaml
+    ports:
+      - 9080:9080
+    command: -config.file=/tmp/promtail/config.yaml
+    restart: always
+    networks:
+      - app
+    container_name: promtail
+
+  grafana:
+    image: grafana/grafana:latest 
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+    environment:
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning/datasources
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - TZ=${SYSTEM_TIMEZONE:-Europe/Moscow}
+    ports:
+      - 3000:3000
+    restart: always
+    networks:
+      - app
+    container_name: grafana
+
+networks:
+  app:
+    driver: bridge

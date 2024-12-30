@@ -10,7 +10,7 @@ from .schemas import *
 DB = {"datasets": {}, "models": {}}
 
 router = APIRouter(prefix="/api/v1/models")
-qdrant_client = QdrantClient(url="http://localhost:6333", timeout=1000)
+qdrant_client = QdrantClient(url="http://qdrant:6333", timeout=1000)
 
 
 # API endpoints
