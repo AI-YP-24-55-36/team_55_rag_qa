@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 API_URL = "http://127.0.0.1:8000/api/v1/models"
-global model_id_test_add
+
 
 def clear_other_checkboxes(checked_key):
     for key in st.session_state.keys():
@@ -29,6 +29,7 @@ def text_form(key):
                  value="",
                  placeholder="Введите или скопируйте текст",
                  key=key)
+
 
 def benchmarks(id, samples):
     times = []
@@ -52,13 +53,16 @@ def benchmarks(id, samples):
         log_and_display(f"Нет модели с таким id: {response.status_code}", level="error",
                         display_func=st.error)
 
-def bench(test_id1,test_id2, data):
+
+def bench(test_id1, test_id2, data):
     samples = data["question"].sample(100, random_state=42)
     benchmarks(test_id1, samples)
 
     if test_id2:
         benchmarks(test_id2, samples)
-    else: st.success("Нет модели для сравнения")
+    else:
+        st.success("Нет модели для сравнения")
+
 
 def acc_exec(id):
     params = {"model_id": id, "threshold": 1000}
@@ -70,6 +74,7 @@ def acc_exec(id):
     else:
         log_and_display(f"Ошибка при запросе API, неверные параметры: {response.status_code}", level="error",
                         display_func=st.error)
+
 
 def main():
     # загрузка заголовка приложения
@@ -370,7 +375,8 @@ def main():
                         acc_exec(model_id_test1)
                         if model_id_test2:
                             acc_exec(model_id_test2)
-                        else: st.success("Нет модели для сравнения")
+                        else:
+                            st.success("Нет модели для сравнения")
 
                     if st.sidebar.button("Выгрузка моделей"):
                         response = requests.post(f"{API_URL}/unload_model", json={"message": "удаление"})
@@ -410,7 +416,8 @@ def main():
                                 log_and_display(f"Score: {score}, Идентификатор {id}", level="success",
                                                 display_func=st.warning)
                                 log_and_display("Предикт выполнен успешно", level="success")
-                            else: log_and_display("Ответ не найден", level="success", display_func=st.success)
+                            else:
+                                log_and_display("Ответ не найден", level="success", display_func=st.success)
                         else:
                             log_and_display(f"Нет модели с таким id: {response.status_code}", level="error",
                                             display_func=st.error)
