@@ -19,8 +19,8 @@ scrape_configs:
       - targets:
           - localhost
         labels:
-          job: frontend
-          __path__: /app/logs/frontend/*.log
+          job: streamlit
+          __path__: /app/logs/streamlit/*.log
       
 
     pipeline_stages:
