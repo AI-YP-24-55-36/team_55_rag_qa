@@ -12,6 +12,19 @@ services:
     networks:
       - app
     container_name: backend
+  
+  streamlit:
+    build: streamlit
+    ports:
+      - 8501:8501
+    depends_on:
+      - backend
+    volumes:
+      - ./logs/streamlit:/app/logs
+    restart: always
+    networks:
+      - app
+    container_name: streamlit
 
   qdrant:
     image: qdrant/qdrant:latest
