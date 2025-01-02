@@ -4,6 +4,8 @@
 
 ```
 fastapi_back/
+├── .dockerignore
+├── Dockerfile -- создание образа из наших файлов приложения
 ├── LICENSE
 ├── README.md
 └── src/
@@ -48,7 +50,7 @@ fastapi_back/
 - `DELETE /api/v1/models/remove/{model_id}`: Удалить конкретную модель
 - `DELETE /api/v1/models/remove_all`: Удалить все модели
 
-## Настройка и запуск
+## Настройка и запуск для тестирования только backend части
 
 1. Установите зависимости (pip install -r requirements.txt)
 2. Настройте `QdrantClient` в файле `src/api/v1/api_route.py`
