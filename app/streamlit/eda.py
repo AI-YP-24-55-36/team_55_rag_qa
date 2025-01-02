@@ -2,14 +2,14 @@ import re
 from collections import defaultdict, Counter
 
 import matplotlib.pyplot as plt
+import pandas as pd
+import plotly.express as px
+from plotly.subplots import make_subplots
 import seaborn as sns
-from wordcloud import WordCloud
 import nltk
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.manifold import TSNE
-from plotly.subplots import make_subplots
-import plotly.express as px
-import pandas as pd
+from wordcloud import WordCloud
 
 
 def length(df):

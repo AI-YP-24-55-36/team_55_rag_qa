@@ -1,9 +1,20 @@
 import time
-import streamlit as st
-from validate_df import validate_csv
-from eda import plot_length, length, plot_top_words, plot_wordcloud, prep, plot_tsne, plot_bench
-from project_logger import log_and_display
+
 import requests
+import streamlit as st
+
+from validate_df import validate_csv
+from eda import (
+    plot_length,
+    length,
+    plot_top_words,
+    plot_wordcloud,
+    prep,
+    plot_tsne,
+    plot_bench,
+)
+from project_logger import log_and_display
+
 
 st.set_page_config(
     page_title="RAG",

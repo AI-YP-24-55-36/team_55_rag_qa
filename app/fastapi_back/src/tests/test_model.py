@@ -1,9 +1,10 @@
 from unittest.mock import Mock
+
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
-import pandas as pd
 
-from main import app
+from ..main import app
 
 client = TestClient(app)
 
