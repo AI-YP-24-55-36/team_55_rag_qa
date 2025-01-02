@@ -1,10 +1,10 @@
+import re
+from collections import defaultdict, Counter
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 from wordcloud import WordCloud
-from collections import defaultdict
-from collections import Counter
 import nltk
-import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.manifold import TSNE
 from plotly.subplots import make_subplots
@@ -12,15 +12,16 @@ import plotly.express as px
 import pandas as pd
 
 
-# длины текстов в словах(токенах)
-
 def length(df):
+    """Функция расчет длин текстов в словах (токенах)"""
     columns = df.columns
     for col in columns:
         df[f'length_{col}'] = df[col].astype('str').apply(lambda text: len(text.split()))
     return df
 
+
 def plot_length(df, col):
+    """Функция построения графиков слов"""
     fig = make_subplots(rows=3, cols=1, subplot_titles=(f"{col[0]}", f"{col[1]}", f"{col[2]}"))
     fig1 = px.histogram(df, x=col[0])
     fig2 = px.histogram(df, x=col[1])
@@ -39,18 +40,20 @@ def plot_length(df, col):
     fig.update_traces(marker_color='orange', opacity=0.5)
     return fig
 
-# частотность, функция, токенизирует по словам переданный ей текст в список слов, возвращает корпус токенов
-def corpus(text):
-    words = text.str.split().values.tolist()
-    corpus = [word.lower() for i in words for word in i]
-    return corpus
 
-# функция для создания столбчатой диаграммы для 15 наиболее часто встречамых стоп-слов и
+def corpus(text):
+    """Функция токенизирует по словам переданный ей текст в список слов, возвращает корпус токенов"""
+    words = text.str.split().values.tolist()
+    corpus_ = [word.lower() for i in words for word in i]
+    return corpus_
+
+
 def plot_top_words(text):
+    """Функция для создания столбчатой диаграммы для 15 наиболее часто встречамых стоп-слов"""
     stop = set(nltk.corpus.stopwords.words('english') + ['-', '-', '–', '&', '/'])
     sns.set_theme(palette='pastel', font_scale=0.9)
     fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(15, 7))
-    plt.suptitle(f'Топ частотных стоп-слов и топ _НЕ_ стоп-слов', fontsize=12)
+    plt.suptitle("Топ частотных стоп-слов и топ _НЕ_ стоп-слов", fontsize=12)
 
     # токенизация на слова
     corp = corpus(text)
@@ -69,7 +72,7 @@ def plot_top_words(text):
     x, y = [], []
     # отбор слов, которых нет в списке стоп-слов
     for word, count in most[:99]:
-        if (word not in stop):
+        if word not in stop:
             x.append(word)
             y.append(count)
     sns.barplot(x=y, y=x, hue=y, ax=axes[1])
@@ -77,8 +80,9 @@ def plot_top_words(text):
     plt.subplots_adjust(hspace=0.5, wspace=0.5)
     return fig, axes
 
-# Функция
+
 def plot_wordcloud(text):
+    """Функция создания облака слов"""
     # соединяем весь текст в список для подачи в wordcloud.generate
     STOPWORDS = set(nltk.corpus.stopwords.words('english') + ['-', '-', '–', '&', '/'])
 
@@ -94,31 +98,40 @@ def plot_wordcloud(text):
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12, 12))
     ax.imshow(wordcloud)
     ax.axis('off')
-    plt.title(f'Облако слов колонка с текстами\n', fontsize=15)
+    plt.title("Облако слов колонка с текстами\n", fontsize=15)
     plt.show()
     return fig, ax
 
-# оставляем только слова
+
 def words_only(text):
+    """Функция для оставления только слов"""
     return " ".join(re.compile("[A-Za-z]+").findall(text))
-# удаление слов меньше 2-х букв
+
+
 def remove_word(text):
+    """Функция удаления слов меньше 2-х букв"""
     return " ".join([token for token in text.split() if len(token) > 3])
 
-# удаление стоп слов
+
 def remove_stopwords(text):
+    """Функция удаление стоп слов"""
     mystopwords = set(nltk.corpus.stopwords.words('english') + ['-', '-', '–', '&', '/'])
     try:
-        return " ".join([token for token in text.split() if not token in mystopwords])
-    except:
+        return " ".join([token for token in text.split() if token not in mystopwords])
+    except Exception:
         return ""
+
+
 def prep(text):
+    """Функция препроцессинга текстов"""
     return remove_stopwords(remove_word(words_only(text.lower())))
 
+
 def plot_tsne(text):
-    corpus = text.apply(lambda x: prep(x))
+    """Функция построения tsne"""
+    corpus_ = text.apply(lambda x: prep(x))
     vectorizer = TfidfVectorizer(max_features=100)
-    X = vectorizer.fit_transform(corpus)
+    X = vectorizer.fit_transform(corpus_)
     tsne = TSNE(n_components=2, random_state=42)
     X_tsne = tsne.fit_transform(X.toarray())
     feature_names = vectorizer.get_feature_names_out()
@@ -135,6 +148,7 @@ def plot_tsne(text):
 
 
 def plot_bench(times):
+    """Функция получения бенчмарков"""
     sns.set_theme(palette='pastel', font_scale=0.9)
     times_s = pd.Series(times)
     fig, ax = plt.subplots()

@@ -1,14 +1,16 @@
+from unittest.mock import Mock
 import pytest
 from fastapi.testclient import TestClient
-from main import app
 import pandas as pd
-from unittest.mock import Mock
+
+from main import app
 
 client = TestClient(app)
 
 
 @pytest.fixture
 def mock_db():
+    """Функция создания дб"""
     return {
         "datasets": {},
         "models": {}
@@ -17,10 +19,12 @@ def mock_db():
 
 @pytest.fixture
 def mock_qdrant_client():
+    """Функция подключения qdrant"""
     return Mock()
 
 
 def test_load_dataset():
+    """Функция создания тестовых данных"""
     test_data = {
         "datasets": {
             "test_dataset": [
@@ -36,7 +40,7 @@ def test_load_dataset():
 
 
 def test_fit_save():
-    # Сначала загрузим датасет
+    """Функция теста обученния модели"""
     dataset = {
         "datasets": {
             "test_dataset": [
@@ -67,6 +71,7 @@ def test_fit_save():
 
 
 def test_load_unload_model():
+    """Функция теста загрузки, выгрузки модели"""
     # Загрузка модели
     response = client.post("/api/v1/models/load_model",
                            json={"model_id": "model1"})
@@ -85,6 +90,7 @@ def test_load_unload_model():
 
 
 def test_find_context():
+    """Функция теста поиска контекста"""
     # Тест поиска контекста
     request = {
         "model_id": "model1",
@@ -103,17 +109,20 @@ def test_find_context():
 
 
 def test_get_datasets():
+    """Функция теста получения датасета"""
     response = client.get("/api/v1/models/get_datasets")
     assert response.status_code == 200
     assert "datasets_nm" in response.json()
 
 
 def test_list_models():
+    """Функция теста получения списка моделей"""
     response = client.get("/api/v1/models/list_models")
     assert response.status_code == 200
 
 
 def test_remove_model():
+    """Функция теста удаления модели"""
     # Удаление существующей модели
     response = client.delete("/api/v1/models/remove/model1")
     assert response.status_code == 200
@@ -126,6 +135,7 @@ def test_remove_model():
 
 
 def test_remove_all_models():
+    """Функция теста удаления всех моделей"""
     # Удаление всех моделей
     response = client.delete("/api/v1/models/remove_all")
     assert response.status_code == 200
@@ -133,6 +143,7 @@ def test_remove_all_models():
 
 # Тестирование на большом датасете
 def test_load_full_dataset():
+    """Функция теста большого датасета"""
     df = pd.read_csv('full_dataset.csv')
     df = df.fillna('')
     test_data = {
@@ -147,6 +158,7 @@ def test_load_full_dataset():
 
 
 def test_full_fit_save():
+    """Функция теста полного цикла обучения"""
     # Сначала загрузим датасет
     df = pd.read_csv('full_dataset.csv')
     df = df.fillna('')
@@ -180,6 +192,7 @@ def test_full_fit_save():
 
 
 def test_full_load_unload_model():
+    """Функция теста полного цикла загрузки выгрузки модели"""
     # Загрузка модели
     response = client.post("/api/v1/models/load_model",
                            json={"model_id": "model1"})
@@ -198,6 +211,7 @@ def test_full_load_unload_model():
 
 
 def test_full_find_context():
+    """Функция теста получения контекста на большом объеме"""
     # Тест поиска контекста
     request = {
         "model_id": "model1",
@@ -216,17 +230,20 @@ def test_full_find_context():
 
 
 def test_full_get_datasets():
+    """Функция теста получения полного датасета"""
     response = client.get("/api/v1/models/get_datasets")
     assert response.status_code == 200
     assert "datasets_nm" in response.json()
 
 
 def test_full_list_models():
+    """Функция теста получения полного списка моделей"""
     response = client.get("/api/v1/models/list_models")
     assert response.status_code == 200
 
 
 def test_check():
+    """Функция теста состояния модели"""
     request = {
         "model_id": "model1",
         "threshold": 1000
@@ -236,6 +253,7 @@ def test_check():
 
 
 def test_full_remove_model():
+    """Функция теста удаления модели по id"""
     # Удаление существующей модели
     response = client.delete("/api/v1/models/remove/model1")
     assert response.status_code == 200
@@ -248,6 +266,7 @@ def test_full_remove_model():
 
 
 def test_full_remove_all_models():
+    """Функция теста удаления всех моделей"""
     # Удаление всех моделей
     response = client.delete("/api/v1/models/remove_all")
     assert response.status_code == 200
