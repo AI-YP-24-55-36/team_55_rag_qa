@@ -1,9 +1,10 @@
-import uvicorn
+# import uvicorn
+from typing import Annotated, Literal
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
-from api.v1.api_route import router
-from typing import Annotated, Literal
-from logger import main_logger
+
+from .api.v1.api_route import router
+from .logger import main_logger
 
 tags_metadata: list[dict[str, str]] = [
     {
@@ -22,9 +23,10 @@ app = FastAPI(
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    main_logger.info(f"Incoming request: {request.method} {request.url}")
+    """Функция логирование запросов"""
+    main_logger.info("Incoming request: %s %s", request.method, request.url)
     response = await call_next(request)
-    main_logger.info(f"Outgoing response: Status {response.status_code}")
+    main_logger.info("Outgoing response: Status %d", response.status_code)
     return response
 
 
@@ -33,6 +35,7 @@ class StatusResponse(BaseModel):
 
 
 def check_service_status() -> StatusResponse:
+    """Функция проверки статуса сервера"""
     service_available = True
     status = "App healthy" if service_available else "App unavailable"
     return StatusResponse(status=status)
@@ -40,6 +43,7 @@ def check_service_status() -> StatusResponse:
 
 @app.get("/", response_model=StatusResponse)
 async def root() -> StatusResponse:
+    """Центральная функция запуска основного ip"""
     main_logger.info("Root endpoint called")
     return check_service_status()
 
@@ -47,5 +51,5 @@ async def root() -> StatusResponse:
 # Роутер с префиксом /api/v1/models
 app.include_router(router)
 
-#if __name__ == "__main__":
+# if __name__ == "__main__":
 #    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

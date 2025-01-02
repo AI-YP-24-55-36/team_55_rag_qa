@@ -1,9 +1,11 @@
-
 import logging
 from logging.handlers import RotatingFileHandler
+
+
 def setup_logger():
-    logger = logging.getLogger("StreamlitLogger")
-    logger.setLevel(logging.DEBUG)
+    """Установка настроек логера"""
+    logger_ = logging.getLogger("StreamlitLogger")
+    logger_.setLevel(logging.DEBUG)
     handler = RotatingFileHandler(
         "logs/app.log",
         maxBytes=10 * 1024 * 1024,
@@ -14,21 +16,23 @@ def setup_logger():
         "%(asctime)s - %(levelname)s - %(message)s"
     )
     handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    return logger
+    logger_.addHandler(handler)
+    return logger_
 
-logger = setup_logger()
 
-# обертка для записи в лог-файл и вывод в Streamlit
 def log_and_display(message, level="info", display_func=None):
+    """Функция обертка для записи в лог-файл и вывод в Streamlit"""
     if level == "info":
         logger.info(message)
     elif level == "success":
-        logger.info("SUCCESS: " + message)
+        logger.info("SUCCESS: %s", message)  # Используем ленивое форматирование
     elif level == "error":
-        logger.error("ERROR: " + message)
+        logger.error("ERROR: %s", message)
     else:
         logger.debug(message)
     # отображение в Streamlit
     if display_func:
         display_func(message)
+
+
+logger = setup_logger()

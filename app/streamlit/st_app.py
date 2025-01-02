@@ -1,9 +1,9 @@
+import time
 import streamlit as st
 from validate_df import validate_csv
 from eda import plot_length, length, plot_top_words, plot_wordcloud, prep, plot_tsne, plot_bench
 from project_logger import log_and_display
 import requests
-import time
 
 st.set_page_config(
     page_title="RAG",
@@ -16,12 +16,14 @@ API_URL = "http://backend:8000/api/v1/models"
 
 
 def clear_other_checkboxes(checked_key):
-    for key in st.session_state.keys():
+    """Функция очистки чекбоксов"""
+    for key in st.session_state:
         if key != checked_key and st.session_state[key]:
             st.session_state[key] = False
 
 
 def text_form(key):
+    """Функция для получения контекста"""
     if "textarea" not in st.session_state:
         st.session_state.textarea = ""
     st.text_area("Введите текст для проверки работы модели",
@@ -31,15 +33,16 @@ def text_form(key):
                  key=key)
 
 
-def benchmarks(id, samples):
+def benchmarks(id_, samples):
+    """Функция получения бенчмарка"""
     times = []
-    context = {"model_id": id, "question": "test"}
-    response = requests.post(f"{API_URL}/find_context", json=context)
+    context = {"model_id": id_, "question": "test"}
+    response = requests.post(f"{API_URL}/find_context", json=context, timeout=10000)
     if response.status_code == 200:
         for el in samples:
             start = time.time()
-            context = {"model_id": id, "question": el}
-            response = requests.post(f"{API_URL}/find_context", json=context)
+            context = {"model_id": id_, "question": el}
+            response = requests.post(f"{API_URL}/find_context", json=context, timeout=10000)
             end = time.time()
             res = end - start
             times.append(res)
@@ -48,13 +51,14 @@ def benchmarks(id, samples):
         times.clear()
         st.pyplot(fig)
         st.success(
-            f"Среднее время извлечения одного ответа: {mean} секунды  для модели {id}")
+            f"Среднее время извлечения одного ответа: {mean} секунды  для модели {id_}")
     else:
         log_and_display(f"Нет модели с таким id: {response.status_code}", level="error",
                         display_func=st.error)
 
 
 def bench(test_id1, test_id2, data):
+    """Функция проверки сэмплов"""
     samples = data["question"].sample(100, random_state=42)
     benchmarks(test_id1, samples)
 
@@ -64,12 +68,13 @@ def bench(test_id1, test_id2, data):
         st.success("Нет модели для сравнения")
 
 
-def acc_exec(id):
-    params = {"model_id": id, "threshold": 1000}
-    response = requests.post(f"{API_URL}/quality_test", json=params)
+def acc_exec(id_):
+    """Функция расчета точности"""
+    params = {"model_id": id_, "threshold": 1000}
+    response = requests.post(f"{API_URL}/quality_test", json=params, timeout=10000)
     if response.status_code == 200:
         acc = response.json()["accuracy"] * 100
-        log_and_display(f"Точность для модели {id}: {acc} %", level="success",
+        log_and_display(f"Точность для модели {id_}: {acc} %", level="success",
                         display_func=st.success)
     else:
         log_and_display(f"Ошибка при запросе API, неверные параметры: {response.status_code}", level="error",
@@ -77,6 +82,7 @@ def acc_exec(id):
 
 
 def main():
+    """Основная функция"""
     # загрузка заголовка приложения
     st.title("Обучение модели для чат-бота на основе RAG")
     st.markdown("""
@@ -91,7 +97,7 @@ def main():
 
     st.header("Загрузка данных")
     st.markdown("""
-       **Формат датасета** - 3 колонки с текстами  
+       **Формат датасета** - 3 колонки с текстами
        `контекст(context)`, `вопрос(question)`, `ответ(answer)`
         """)
     st.markdown("ссылка на [пример датасета](https://huggingface.co/datasets/neural-bridge/rag-dataset-12000)")
@@ -208,14 +214,14 @@ def main():
                 data["answer"] = data[columns[2]].apply(lambda x: prep(x))
 
                 log_and_display(
-                    f"Текст очищен от стоп-слов, от символов не являющихся буквами и цифрами", level="success",
+                    "Текст очищен от стоп-слов, от символов не являющихся буквами и цифрами", level="success",
                     display_func=st.success)
                 st.dataframe(data.head(10))
                 payload = {}
                 payloads = data.to_dict("records")
                 data_name = uploaded_file.name
                 payload["datasets"] = {data_name: payloads}
-                response = requests.post(f"{API_URL}/load_dataset", json=payload)
+                response = requests.post(f"{API_URL}/load_dataset", json=payload, timeout=10000)
                 mess = response.json()[0]["message"]
                 if response.status_code == 201:
                     log_and_display(f"{mess}", level="success", display_func=st.success)
@@ -311,7 +317,7 @@ def main():
                         fit_p["dataset_nm"] = uploaded_file.name
                         st.warning('Параметры отправлены в модель, ждем ответ...')
                         fit_save.append(fit_p)
-                        response = requests.post(f"{API_URL}/fit_save", json=fit_save)
+                        response = requests.post(f"{API_URL}/fit_save", json=fit_save, timeout=10000)
                         if isinstance(response.json(), dict):
                             log_and_display(f"{response.json()}", level="warning", display_func=st.warning)
                         else:
@@ -326,7 +332,7 @@ def main():
                     model_id_load = st.sidebar.text_input("model_id_load", max_chars=20)
                     model_load = {"model_id": model_id_load}
                     if st.sidebar.button("Загрузка модели"):
-                        response = requests.post(f"{API_URL}/load_model", json=model_load)
+                        response = requests.post(f"{API_URL}/load_model", json=model_load, timeout=10000)
                         if response.status_code == 200:
                             mess = response.json()[0]["message"]
                             log_and_display(f"Отправленные параметры: {mess}", level="success",
@@ -336,17 +342,18 @@ def main():
                                             display_func=st.error)
 
                     if st.sidebar.button("Список моделей"):
-                        response = requests.get(f"{API_URL}/list_models")
+                        response = requests.get(f"{API_URL}/list_models", timeout=10000)
                         if response.status_code == 200:
                             if response.json()[0]["models"] != []:
                                 for models in response.json():
                                     for el in models["models"]:
                                         model = el["model_id"]
-                                        type = el["type"]
+                                        type_ = el["type"]
                                         hparam = el["hyperparameters"]
                                         if response.status_code == 200:
                                             log_and_display(
-                                                f"Идентификатор модели: {model}, Тип модели: {type}, Гиперпараметры:{hparam}",
+                                                f"Идентификатор модели: {model}, Тип модели: {type_}, \
+                                                Гиперпараметры:{hparam}",
                                                 level="success",
                                                 display_func=st.success)
                                         else:
@@ -354,10 +361,10 @@ def main():
                                                             level="error",
                                                             display_func=st.error)
                             else:
-                                log_and_display(f"Нет загруженных моделей", level="error",
+                                log_and_display("Нет загруженных моделей", level="error",
                                                 display_func=st.error)
                     if st.sidebar.button("Список датасетов"):
-                        response = requests.get(f"{API_URL}/get_datasets")
+                        response = requests.get(f"{API_URL}/get_datasets", timeout=10000)
                         if response.status_code == 200:
                             df_list = response.json()["datasets_nm"]
                             log_and_display(f"Список датасетов: {df_list}", level="success",
@@ -379,7 +386,7 @@ def main():
                             st.success("Нет модели для сравнения")
 
                     if st.sidebar.button("Выгрузка моделей"):
-                        response = requests.post(f"{API_URL}/unload_model", json={"message": "удаление"})
+                        response = requests.post(f"{API_URL}/unload_model", json={"message": "удаление"}, timeout=10000)
                         try:
                             for el in response.json():
                                 mess = el["message"]
@@ -390,14 +397,14 @@ def main():
                                     log_and_display(f"Модели с таким id не существует: {response.status_code}",
                                                     level="error",
                                                     display_func=st.error)
-                        except Exception as e:
-                            log_and_display(f"Нет загруженных моделей", level="error", display_func=st.error)
+                        except Exception:
+                            log_and_display("Нет загруженных моделей", level="error", display_func=st.error)
 
                 if st.sidebar.checkbox("Инференс", key="infer", on_change=clear_other_checkboxes, args=("infer",)):
                     text_form("textarea")
                     model_id_inf = st.text_input("model_id", max_chars=20)
                     if st.button('Отправить текст'):
-                        if len(st.session_state.textarea):
+                        if st.session_state.textarea:
                             st.success('Текст отправлен в модель')
                         else:
                             st.warning('Поле пустое')
@@ -406,14 +413,14 @@ def main():
                         test = st.session_state.textarea
                         context = {"model_id": model_id_inf, "question": test}
 
-                        response = requests.post(f"{API_URL}/find_context", json=context)
+                        response = requests.post(f"{API_URL}/find_context", json=context, timeout=10000)
                         if response.status_code == 200:
                             if response.json() != []:
                                 request = response.json()[0]["context"]
                                 score = response.json()[0]["score"]
-                                id = response.json()[0]["point_id"]
+                                id_ = response.json()[0]["point_id"]
                                 log_and_display(f"Ответ: {request}", level="success", display_func=st.success)
-                                log_and_display(f"Score: {score}, Идентификатор {id}", level="success",
+                                log_and_display(f"Score: {score}, Идентификатор {id_}", level="success",
                                                 display_func=st.warning)
                                 log_and_display("Предикт выполнен успешно", level="success")
                             else:
@@ -426,7 +433,7 @@ def main():
                 model_id_remove = st.sidebar.text_input("model_id_remove", max_chars=20)
                 if model_id_remove is not None:
                     if st.sidebar.button("Удалить модель"):
-                        response = requests.delete(f"{API_URL}/remove/{model_id_remove}")
+                        response = requests.delete(f"{API_URL}/remove/{model_id_remove}", timeout=10000)
                         if response.status_code == 200:
                             log_and_display(f"Удалена модель {model_id_remove}", level="success",
                                             display_func=st.success)
@@ -435,11 +442,11 @@ def main():
                                             display_func=st.error)
 
                 if st.sidebar.button("Удалить все модели"):
-                    response = requests.delete(f"{API_URL}/remove_all")
+                    response = requests.delete(f"{API_URL}/remove_all", timeout=10000)
                     if response.status_code == 200:
-                        log_and_display(f"Удалены все модели", level="success", display_func=st.success)
+                        log_and_display("Удалены все модели", level="success", display_func=st.success)
                     else:
-                        log_and_display(f"Нет моделей для удаления: {response.status_code}", level="error",
+                        log_and_display("Нет моделей для удаления: {response.status_code}", level="error",
                                         display_func=st.error)
 
 

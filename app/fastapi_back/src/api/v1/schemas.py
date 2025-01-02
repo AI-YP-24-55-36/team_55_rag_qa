@@ -1,5 +1,4 @@
 from typing import Annotated, Dict, List, Any, TypedDict, Optional
-from typing_extensions import TypedDict
 from pydantic import BaseModel, RootModel
 
 
@@ -12,13 +11,14 @@ class DatasetEntry(TypedDict):
 DatasetItm = Annotated[DatasetEntry,
                        "Датасет содержащий контекст, вопрос и ответ"]
 
-'''Модель данных для загрузки датасета'''
+
 class DatasetRequest(BaseModel):
+    """Модель данных для загрузки датасета"""
     datasets: Dict[str, List[DatasetItm]]
 
 
-'''Модель данных для обучения модели'''
 class FitRequest(BaseModel):
+    """Модель данных для обучения модели"""
     hyperparameters: Dict[str, Any]
     model_id: str
     ml_model_type: str
@@ -29,19 +29,19 @@ class FitRequestList(RootModel):
     root: List[FitRequest]
 
 
-'''Модель данных для загрузки модели'''
 class LoadRequest(BaseModel):
+    """Модель данных для загрузки модели"""
     model_id: str
 
 
-'''Модель данных для предсказания используя предоставленные данные'''
 class PredictRequest(BaseModel):
+    """Модель данных для предсказания используя предоставленные данные"""
     model_id: str
     question: str
 
 
-'''Модель данных для вывода списка датасетов.'''
 class DsListResponse(BaseModel):
+    """Модель данных для вывода списка датасетов."""
     datasets_nm: List[str]
 
 
@@ -55,8 +55,8 @@ class VectorizeRequest(BaseModel):
     texts: List[str]
 
 
-'''Модель данных для вывода списка моделей.'''
 class ModelListResponse(BaseModel):
+    """Модель данных для вывода списка моделей."""
     models: List[ModelElementResponse]
 
 
@@ -64,8 +64,8 @@ class ModelsListResponse(RootModel):
     root: List[ModelListResponse]
 
 
-'''Модель данных для ответа 1 строки.'''
 class ApiResponse(BaseModel):
+    """Модель данных для ответа 1 строки."""
     message: str
 
 
@@ -73,21 +73,21 @@ class MessageItem(BaseModel):
     message: str
 
 
-'''Модель данных для ответа нескольких элементов.'''
 class MutlipleApiResponse(RootModel):
+    """Модель данных для ответа нескольких элементов."""
     root: List[MessageItem]
 
 
-'''Модель данных для ответа модели.'''
 class FindCntxtResponse(BaseModel):
+    """Модель данных для ответа модели."""
     context: str
     score: float
     point_id: int
     model_id: str
 
 
-'''Модель данных для тестирования модели'''
 class CheckRequest(BaseModel):
+    """Модель данных для тестирования модели"""
     model_id: str
     threshold: Optional[int] = None
 

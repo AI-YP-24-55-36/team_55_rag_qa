@@ -1,11 +1,12 @@
-from qdrant_client import QdrantClient, models
-from scipy.sparse import csr_matrix
 from typing import List
 import time
-from logger import qdrant_logger
+from qdrant_client import QdrantClient, models
+from scipy.sparse import csr_matrix
+from ..logger import qdrant_logger
 
 
 def save_vectors_batch(client, source_texts: List[str], vectors: csr_matrix, collection_name: str = "default"):
+    """Функция сохранения векторов"""
     client.create_collection(
         collection_name=collection_name,
         vectors_config={},
@@ -17,7 +18,7 @@ def save_vectors_batch(client, source_texts: List[str], vectors: csr_matrix, col
             )
         },
     )
-    qdrant_logger.info(f"collection {collection_name} created")
+    qdrant_logger.info("collection %s created", collection_name)
     points = []
     for i in range(vectors.shape[0]):
         indices = vectors[i].indices.tolist()
@@ -41,7 +42,7 @@ def save_vectors_batch(client, source_texts: List[str], vectors: csr_matrix, col
         parallel=4,
         max_retries=3,
     )
-    qdrant_logger.info(f"collection {collection_name} filled")
+    qdrant_logger.info("collection %s filled", collection_name)
 
 
 def search_similar_texts(
@@ -50,6 +51,7 @@ def search_similar_texts(
     collection_name: str = "default",  # добавить дефолтную коллекцию
     limit: int = 1
 ) -> List[dict]:
+    """Функция поиска схожих текстов"""
     query_indices = query_vec[0].indices.tolist()
     query_data = query_vec[0].data.tolist()
 
@@ -71,12 +73,13 @@ def search_similar_texts(
         }
         for point in results.points
     ]
-    qdrant_logger.info(f"texts found")
-
+    qdrant_logger.info("texts found")
     return found_texts
 
-# TODO оптимизировать
+
+# оптимизировать
 def check_questions(client, df, model, collection_name) -> dict[str, float | List[float]]:
+    """Функция поиска вопросов"""
     correct = 0
     query_text = df['question']
     query_vecs = model.transform(query_text)
