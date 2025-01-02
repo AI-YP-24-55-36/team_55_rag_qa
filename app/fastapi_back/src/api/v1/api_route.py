@@ -1,14 +1,27 @@
 from http import HTTPStatus
 from typing import List
+
+import pandas as pd
 from fastapi import APIRouter, HTTPException
 from qdrant_client import QdrantClient
-import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
+
 from ...qdrant.load_qdrant import save_vectors_batch, search_similar_texts, check_questions
 from ...logger import api_logger
 
-from .schemas import MutlipleApiResponse, Annotated, DatasetRequest, FitRequestList, LoadRequest, FindCntxtsResponse
-from .schemas import PredictRequest, AccuracyResponse, CheckRequest, DsListResponse, ModelsListResponse
+from .schemas import (
+    MutlipleApiResponse,
+    Annotated,
+    DatasetRequest,
+    FitRequestList,
+    LoadRequest,
+    FindCntxtsResponse,
+    PredictRequest,
+    AccuracyResponse,
+    CheckRequest,
+    DsListResponse,
+    ModelsListResponse,
+)
 
 DB = {"datasets": {}, "models": {}}
 
