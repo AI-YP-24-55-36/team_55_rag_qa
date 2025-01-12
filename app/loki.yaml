@@ -1,0 +1,39 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  http_server_write_timeout: 310s
+  http_server_read_timeout: 310s
+
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: boltdb-shipper
+      object_store: filesystem
+      schema: v11
+      index:
+        prefix: index_
+        period: 24h
+
+table_manager:
+  retention_deletes_enabled: true
+  retention_period: 168h
+
+analytics:
+  reporting_enabled: false
+
+querier:
+  query_timeout: 300s
+  engine:
+    timeout: 300s
