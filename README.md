@@ -15,7 +15,7 @@
 * tg: [@jmzzomg](https://t.me/jmzzomg "Георгий")
 * github: [@joein](github.com/joein "Георгий")
 
-## Списосок участников
+## Список участников
 
 * Евгений Яковенко – tg: [@Yakovenko_evgenii](https://t.me/Yakovenko_evgenii "Евгений"), github: [@yakovenko96](https://github.com/yakovenko96 "Евгений")
 * Людмила Теплова – tg: [@lteplova](https://t.me/lteplova "Людмила"), github: [@lteplova](https://github.com/lteplova "Людмила")
