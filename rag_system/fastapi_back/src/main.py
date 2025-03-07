@@ -4,8 +4,8 @@ from typing import Annotated, Literal
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
 
-from .api.v1.api_route import router
-from .logger import main_logger
+from src.api.v1.api_route import router
+from src.logger import main_logger
 
 tags_metadata: list[dict[str, str]] = [
     {

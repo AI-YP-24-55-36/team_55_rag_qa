@@ -25,16 +25,18 @@
 
 ## Файлы с результатами работы:
 
-1. Разведочный анализ данных
-* EDA.md
-* EDA_RAG_neural_bridge_rag_dataset_12000.ipynb
-* requirements.txt
-2. Baseline model
-* Baseline.md
-* ipynb_base/Baseline.ipynb
+1. notebooks
+* ipynb_eda - Разведочный анализ данных
+* ipynb_base/Baseline.ipynb - baseline модель
 * ipynb_base/ файлы с экспериментами участников
-3. MVP - app
-* fastapi/ - backend
+2. docs
+* Baseline.md
+* checkpoint.md
+* dataset.md
+* EDA.md
+* report.pdf
+3. MVP - rag_system
+* fastapi_back/ - backend
 * streamlit/ - frontend
 * grafana/ - config для отображения логов
 * loki.yaml, promtail.yaml - config для сбора логов

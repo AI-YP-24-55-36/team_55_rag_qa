@@ -6,8 +6,8 @@ from fastapi import APIRouter, HTTPException
 from qdrant_client import QdrantClient
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from ...qdrant.load_qdrant import save_vectors_batch, search_similar_texts, check_questions
-from ...logger import api_logger
+from src.qdrant.load_qdrant import save_vectors_batch, search_similar_texts, check_questions
+from src.logger import api_logger
 
 from .schemas import (
     MutlipleApiResponse,

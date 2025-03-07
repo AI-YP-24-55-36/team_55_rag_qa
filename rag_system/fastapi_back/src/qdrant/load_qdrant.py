@@ -4,7 +4,7 @@ from typing import List
 from qdrant_client import QdrantClient, models
 from scipy.sparse import csr_matrix
 
-from ..logger import qdrant_logger
+from src.logger import qdrant_logger
 
 
 def save_vectors_batch(client, source_texts: List[str], vectors: csr_matrix, collection_name: str = "default"):
