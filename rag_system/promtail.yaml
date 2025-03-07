@@ -9,18 +9,18 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
-  - job_name: app_logs
+  - job_name: rag_system_logs
     static_configs:
       - targets:
           - localhost
         labels:
           job: backend
-          __path__: /app/logs/backend/*.log
+          __path__: /rag_system/logs/backend/*.log
       - targets:
           - localhost
         labels:
           job: streamlit
-          __path__: /app/logs/streamlit/*.log
+          __path__: /rag_system/logs/streamlit/*.log
       
 
     pipeline_stages:

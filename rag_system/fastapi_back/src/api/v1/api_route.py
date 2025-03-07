@@ -9,7 +9,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from src.qdrant.load_qdrant import save_vectors_batch, search_similar_texts, check_questions
 from src.logger import api_logger
 
-from .schemas import (
+from src.api.v1.schemas import (
     MutlipleApiResponse,
     Annotated,
     DatasetRequest,
@@ -23,10 +23,10 @@ from .schemas import (
     ModelsListResponse,
 )
 
-DB = {"datasets": {}, "models": {}}
 
+db = {"datasets": {}, "models": {}}
 router = APIRouter(prefix="/api/v1/models")
-qdrant_client = QdrantClient(url="http://qdrant:6333", timeout=1000)
+qd_client = QdrantClient(url="http://qdrant:6333", timeout=1000)
 
 
 # API endpoints
@@ -34,7 +34,7 @@ qdrant_client = QdrantClient(url="http://qdrant:6333", timeout=1000)
              description='Загрузка датасета')
 async def fit(request: Annotated[DatasetRequest, 'Датасеты в формате массива списков']):
     """Функция обучения модели"""
-    global DB
+    DB = db
     rs = []
     # Работа с несколькими датасетами
     if DB['datasets']:
@@ -61,8 +61,8 @@ async def fit_save(request: Annotated[FitRequestList, '''Список модел
                                       и гиперпараметров для обучения,
                                       векторизации и сохранения датасета''']):
     """Обучение на датасете и загрузка в qdrant"""
-    global DB
-    global qdrant_client
+    DB = db
+    qdrant_client = qd_client
     # Обучение нескольких моделей в 1 запросе
     request = request.root[0]
     model_id = request.model_id
@@ -114,7 +114,7 @@ async def fit_save(request: Annotated[FitRequestList, '''Список модел
              description="Загрузка модели в RAM (TODO)")
 async def load_model(request: Annotated[LoadRequest, 'Модель для загрузки датасета в память']):
     """Загрузка модели в память"""
-    global DB
+    DB = db
     model_id = request.model_id
     if model_id not in DB["models"]:
         api_logger.error("Model '%s' not in db", model_id)
@@ -129,7 +129,7 @@ async def load_model(request: Annotated[LoadRequest, 'Модель для заг
              description="Выгрузка моделей из RAM (TODO)")
 async def unload_model():
     """Выгрузка модели"""
-    global DB
+    DB = db
     res = []
     cntr = 0
     for id_, vals in DB["models"].items():
@@ -152,7 +152,8 @@ async def find_context(request: Annotated[PredictRequest,
     """Поиск контекста"""
     model_id = request.model_id
     question = request.question
-    global DB
+    DB = db
+    qdrant_client = qd_client
     if model_id not in DB["models"] or not DB["models"][model_id]["is_loaded"]:
         api_logger.error("%s not loaded", model_id)
         raise HTTPException(
@@ -185,7 +186,8 @@ async def find_context(request: Annotated[PredictRequest,
 async def quality_test(request: Annotated[CheckRequest,
                                           "Модель данных для тестирования датасета"]):
     """Тестирование модели"""
-    global DB
+    DB = db
+    qdrant_client = qd_client
     model_id = request.model_id
     model = DB["models"][model_id]["model"]
     cur_ds_nm = DB["models"][model_id]["dataset"]
@@ -206,7 +208,7 @@ async def quality_test(request: Annotated[CheckRequest,
             description='Список загруженных датасетов')
 async def get_datasets():
     """Список загруженных датасетов"""
-    global DB
+    DB = db
     return {"datasets_nm": DB["datasets"].keys()}
 
 
@@ -215,7 +217,7 @@ async def get_datasets():
             description='Список загруженных и обученных моделей')
 async def list_models():
     """Список загруженных и обученных моделей"""
-    global DB
+    DB = db
     model_list = [
         {"model_id": model_id,
          "type": data["type"],
@@ -229,8 +231,8 @@ async def list_models():
                description="Удаление модели по ее id")
 async def remove(model_id: str):
     """Удаление модели по id"""
-    global DB
-    global qdrant_client
+    DB = db
+    qdrant_client = qd_client
     if model_id not in DB["models"]:
         api_logger.info("model %s not loaded but tried to delete", model_id)
         raise HTTPException(status_code=404, detail="Model not found")
@@ -244,7 +246,8 @@ async def remove(model_id: str):
                description="Удаление всех моделей и коллекций в qdrant")
 def remove_all():
     """Удаление всех моделей и коллекций в qdrant"""
-    global DB
+    DB = db
+    qdrant_client = qd_client
     messages = [{'message': f"Model '{model_id}' removed"}
                 for model_id in DB["models"]
                 ]
@@ -253,3 +256,7 @@ def remove_all():
             qdrant_client.delete_collection(collection_name=f"{model_id}")
     DB["models"].clear()
     return MutlipleApiResponse(root=messages)
+
+
+if __name__ == "__main__":
+    pass

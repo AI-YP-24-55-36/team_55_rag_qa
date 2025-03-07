@@ -1,4 +1,3 @@
-# import uvicorn
 from typing import Annotated, Literal
 
 from fastapi import FastAPI, Request
@@ -7,18 +6,17 @@ from pydantic import BaseModel
 from src.api.v1.api_route import router
 from src.logger import main_logger
 
-tags_metadata: list[dict[str, str]] = [
-    {
-        "name": "ml_app",
-        "description": "Сервис для обучения и тестирования tf-idf",
-    },
-]
 
 app = FastAPI(
     title="ml_app",
     docs_url="/api/openapi",
     openapi_url="/api/openapi.json",
-    openapi_tags=tags_metadata
+    openapi_tags=[
+        {
+            "name": "ml_app",
+            "description": "Сервис для обучения и тестирования tf-idf",
+        },
+    ]
 )
 
 
@@ -52,5 +50,5 @@ async def root() -> StatusResponse:
 # Роутер с префиксом /api/v1/models
 app.include_router(router)
 
-# if __name__ == "__main__":
-#    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+if __name__ == "__main__":
+    pass
