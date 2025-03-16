@@ -39,7 +39,7 @@ python client.py
 ```bash
 python client.py --model-names all-MiniLM-L6-v2 paraphrase-multilingual-MiniLM-L12-v2 TF-IDF --limit 100
 ```
-В результате получаем два графика:
+В результате получаем два графика для одного бенча:
 
 - сравнение по скорости поиска по трем методам поиска:
 <img width="1125" alt="image" src="https://github.com/user-attachments/assets/d2879a56-4724-4865-aad9-bbb16f378c7a" />
