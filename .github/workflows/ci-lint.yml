@@ -37,7 +37,7 @@ jobs:
       - name: Install Python linters
         run: |
           echo "Installing Python linters"
-          pip install flake8 pylint
+          pip install flake8 pylint ruff
       - name: Lint Python Scripts
         run: |
           echo "Linting Python scripts"
@@ -45,5 +45,6 @@ jobs:
             echo "Checking $file"
             flake8 $file --max-line-length=120 || true
             pylint $file --max-line-length=120 --disable="C0103,C0114,C0115" || true
+            ruff check $file --line-length=120 --fix || true
           done
           
