@@ -4,11 +4,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 import sys
+import datetime
 from tqdm import tqdm
 from qdrant_client import models
 from log_output import Tee
 
-sys.stdout = Tee('log_output.txt')
+Path('./logs/output').mkdir(exist_ok=True, parents=True)
+timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+sys.stdout = Tee(f"./logs/output/log_{timestamp}.txt")
 
 logger = logging.getLogger('bench')
 logger.setLevel(logging.INFO)
