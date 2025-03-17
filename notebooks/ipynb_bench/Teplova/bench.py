@@ -3,8 +3,12 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import time
+import sys
 from tqdm import tqdm
 from qdrant_client import models
+from log_output import Tee
+
+sys.stdout = Tee('log_output.txt')
 
 logger = logging.getLogger('bench')
 logger.setLevel(logging.INFO)

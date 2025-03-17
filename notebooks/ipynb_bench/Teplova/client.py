@@ -75,9 +75,10 @@ def create_collection(client, collection_name, vector_size, distance=Distance.CO
     collections = client.get_collections().collections
     collection_names = [collection.name for collection in collections]
 
-    if collection_name in collection_names:
-        client.delete_collection(collection_name)
-        logger.info(f"Коллекция {collection_name} удалена")
+    if len(collections):
+        for el in collection_names:
+            client.delete_collection(el)
+            logger.info(f"Коллекция {collection_name} удалена")
 
     # Создаем коллекцию с именованными векторами
     client.create_collection(
@@ -124,6 +125,7 @@ def upload_tfidf_data(client, collection_name, data, model):
     texts = [item["context"] for item in data]
 
     # Генерируем разреженные векторы
+
     vectors = model.transform(texts)
 
     # Загружаем точки
