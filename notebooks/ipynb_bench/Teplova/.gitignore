@@ -26,6 +26,7 @@ venv
 docs.zip
 archive.zip
 logs/
+embeddings/
 qdrant_data
 
 # vim temporary files
