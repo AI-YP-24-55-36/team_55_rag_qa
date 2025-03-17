@@ -3,6 +3,7 @@
 .csv
 .idea
 .txt
+.npy
 .ipynb_checkpoints
 .mypy_cache
 .vscode

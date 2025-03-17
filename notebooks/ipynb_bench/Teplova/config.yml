@@ -1,0 +1,6 @@
+paths:
+  base_dir: .
+  logs_dir: logs
+  graphs_dir: logs/graphs
+  embeddings_dir: embeddings
+  output_dir: logs/output
