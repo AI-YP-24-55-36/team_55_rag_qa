@@ -1,17 +1,18 @@
 import argparse
+import os
+import logging
+import time
+from pathlib import Path
+from tqdm import tqdm
 from qdrant_client.http.models import Distance, SearchParams, HnswConfigDiff
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 from read_data_from_csv import read_data
 from bench import benchmark_performance, visualize_results, benchmark_tfidf
 from sklearn.feature_extraction.text import TfidfVectorizer
-import logging
-import time
-from pathlib import Path
-from tqdm import tqdm
-
 from qdrant_client import models
-import os
+from cache_embed import generate_and_save_embeddings
+
 
 # Создаем директории для логов и графиков, если они не существуют
 Path('./logs').mkdir(exist_ok=True)
@@ -174,7 +175,15 @@ def upload_data(client, collection_name, data, model, batch_size=100):
         texts = [item["context"] for item in batch]
 
         # Генерация эмбеддингов для батча
-        vectors = model.encode(texts, show_progress_bar=False)
+        # vectors = model.encode(texts, show_progress_bar=False)
+        args = parse_args()
+        vectors = generate_and_save_embeddings(
+            texts=texts,
+            model=model,
+            array_name=f'{collection_name}+{args.limit}',
+            save_dir="embeddings"
+        )
+
 
         # Подготовка точек для загрузки
         points = []
