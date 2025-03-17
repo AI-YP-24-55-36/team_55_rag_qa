@@ -8,17 +8,23 @@ import datetime
 from tqdm import tqdm
 from qdrant_client import models
 from log_output import Tee
+from load_config import load_config
 
-Path('./logs/output').mkdir(exist_ok=True, parents=True)
+config = load_config()
+BASE_DIR = Path(config["paths"]["base_dir"])
+LOGS_DIR = BASE_DIR / config["paths"]["logs_dir"]
+GRAPHS_DIR = BASE_DIR / config["paths"]["graphs_dir"]
+OUTPUT_DIR = BASE_DIR / config["paths"]["output_dir"]
+
+
 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-sys.stdout = Tee(f"./logs/output/log_{timestamp}.txt")
+sys.stdout = Tee(f"{OUTPUT_DIR}/log_{timestamp}.txt")
 
 logger = logging.getLogger('bench')
 logger.setLevel(logging.INFO)
 logger.propagate = False
 
-Path('./logs').mkdir(exist_ok=True)
-file_handler = logging.FileHandler('./logs/bench.log')
+file_handler = logging.FileHandler(f'{LOGS_DIR}/bench.log')
 file_handler.setLevel(logging.INFO)
 
 # Форматирование логов
@@ -27,7 +33,6 @@ file_handler.setFormatter(formatter)
 
 # Добавление обработчиков к логгеру
 logger.addHandler(file_handler)
-
 
 def benchmark_tfidf(client, collection_name, test_data, model, search_params=None, top_k_values=[1, 3]):
     print(
@@ -271,7 +276,7 @@ def benchmark_performance(client, collection_name, test_data, model, search_para
     return results
 
 
-def visualize_results(speed_results, accuracy_results, tfidf_results=None, title_prefix="Результаты бенчмарка", save_dir="./logs/graphs"):
+def visualize_results(speed_results, accuracy_results, tfidf_results=None, title_prefix="Результаты бенчмарка", save_dir=f"{GRAPHS_DIR}/graphs"):
     print(f"\n📊 Создание визуализаций результатов...")
     logger.info("Создание визуализаций результатов")
 

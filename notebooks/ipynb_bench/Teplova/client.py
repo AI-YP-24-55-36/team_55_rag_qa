@@ -12,11 +12,12 @@ from bench import benchmark_performance, visualize_results, benchmark_tfidf
 from sklearn.feature_extraction.text import TfidfVectorizer
 from qdrant_client import models
 from cache_embed import generate_and_save_embeddings
+from load_config import load_config
 
-
-# Создаем директории для логов и графиков, если они не существуют
-Path('./logs').mkdir(exist_ok=True)
-Path('./logs/graphs').mkdir(exist_ok=True)
+config = load_config()
+BASE_DIR = Path(config["paths"]["base_dir"])
+LOGS_DIR = BASE_DIR / config["paths"]["logs_dir"]
+GRAPHS_DIR = BASE_DIR / config["paths"]["graphs_dir"]
 
 # Настройка логгера для текущего модуля
 logger = logging.getLogger('client')
@@ -24,7 +25,7 @@ logger.setLevel(logging.INFO)
 logger.propagate = False  # Отключаем передачу логов родительским логгерам
 
 # Создание обработчика для записи логов в файл
-file_handler = logging.FileHandler('./logs/client.log')
+file_handler = logging.FileHandler(f'{LOGS_DIR}/client.log')
 file_handler.setLevel(logging.INFO)
 
 # Форматирование логов
@@ -452,13 +453,13 @@ def main():
             accuracy_results=accuracy_results,
             tfidf_results=tfidf_results,
             title_prefix="Сравнение производительности RAG системы",
-            save_dir="./logs/graphs"
+            save_dir=f"{GRAPHS_DIR}"
         )
 
     logger.info("Бенчмарк завершен успешно")
     print("\n" + "="*80)
     print("✅ БЕНЧМАРК ЗАВЕРШЕН УСПЕШНО")
-    print("Графики сохранены в директории ./logs/graphs/")
+    print(f"Графики сохранены в директории {GRAPHS_DIR}")
     print("="*80)
 
 

@@ -7,7 +7,6 @@ config = load_config()
 
 BASE_DIR = Path(config["paths"]["base_dir"])
 LOGS_DIR = BASE_DIR / config["paths"]["logs_dir"]
-GRAPHS_DIR = BASE_DIR / config["paths"]["graphs_dir"]
 EMBEDDINGS_DIR = BASE_DIR / config["paths"]["embeddings_dir"]
 
 
@@ -15,7 +14,6 @@ logger = logging.getLogger('embed')
 logger.setLevel(logging.INFO)
 logger.propagate = False
 
-# Path('./logs').mkdir(exist_ok=True)
 file_handler = logging.FileHandler(f'{LOGS_DIR}/embed.log')
 file_handler.setLevel(logging.INFO)
 
