@@ -7,11 +7,9 @@ import sys
 import datetime
 from tqdm import tqdm
 from fastembed import SparseTextEmbedding
-from qdrant_client.models import SearchRequest
 from qdrant_client import models
 from log_output import Tee
 from load_config import load_config
-from viz_bm25 import visualize_results_bm25
 
 config = load_config()
 BASE_DIR = Path(config["paths"]["base_dir"])
@@ -222,9 +220,6 @@ def benchmark_bm25(client, collection_name, test_data, search_params=None, top_k
         end_time = time.time()
         query_time = end_time - start_time
         results["speed"]["query_times"].append(query_time)
-
-        # Оцениваем точность для разных значений top_k
-        # found_contexts = [point.payload.get('context', '') for point in search_results.points]
 
         found_contexts = []
         for point in search_results.points:
