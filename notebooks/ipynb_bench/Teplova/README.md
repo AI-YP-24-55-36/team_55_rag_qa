@@ -46,8 +46,19 @@ python client.py --model-names all-MiniLM-L6-v2 paraphrase-multilingual-MiniLM-L
 - сравнение по скорости поиска по трем методам поиска:
 <img width="1125" alt="image" src="https://github.com/user-attachments/assets/d2879a56-4724-4865-aad9-bbb16f378c7a" />
 
+<img width="1161" alt="image" src="https://github.com/user-attachments/assets/ba30dab0-9bf6-42f9-a36d-9aa281b96f8f" />
+
+
 - сравнение по точности поиска между разными моделями конвертации текстов в эмбеддинги и методами поиска
 <img width="1124" alt="image" src="https://github.com/user-attachments/assets/e8ca95d4-d1ec-48ad-b230-ef24c7f6056c" />
+
+<img width="1165" alt="image" src="https://github.com/user-attachments/assets/29bcb58b-1f2a-479b-bbd3-44b5a90e7fe8" />
+
+результаты сохраняются в файл:
+
+﻿﻿<img width="711" alt="image" src="https://github.com/user-attachments/assets/d78be4fb-8002-49f9-8229-45c11bb48df1" />
+
+
 
 
 ### Основные параметры
