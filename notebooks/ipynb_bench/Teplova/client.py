@@ -79,10 +79,9 @@ def create_collection(client, collection_name, vector_size, distance=Distance.CO
     collections = client.get_collections().collections
     collection_names = [collection.name for collection in collections]
 
-    if len(collections):
-        for el in collection_names:
-            client.delete_collection(el)
-            logger.info(f"Коллекция {collection_name} удалена")
+    if collection_name in collection_names:
+        client.delete_collection(collection_name)
+        logger.info(f"Коллекция {collection_name} удалена")
 
     # Создаем коллекцию с именованными векторами
     client.create_collection(
@@ -105,10 +104,9 @@ def upload_bm25_data(client, collection_name, data):
     collections = client.get_collections().collections
     collection_names = [collection.name for collection in collections]
 
-    if len(collections):
-        for el in collection_names:
-            client.delete_collection(el)
-            logger.info(f"Коллекция {collection_name} удалена")
+    if collection_name in collection_names:
+        client.delete_collection(collection_name)
+        logger.info(f"Коллекция {collection_name} удалена")
 
     # Создаем коллекцию с BM25-индексом
 
@@ -171,11 +169,9 @@ def upload_tfidf_data(client, collection_name, data, model):
     collections = client.get_collections().collections
     collection_names = [collection.name for collection in collections]
 
-    if len(collections):
-        for el in collection_names:
-            client.delete_collection(el)
-            logger.info(f"Коллекция {collection_name} удалена")
-
+    if collection_name in collection_names:
+        client.delete_collection(collection_name)
+        logger.info(f"Коллекция {collection_name} удалена")
 
     # Создаем коллекцию для разреженных векторов
     client.create_collection(
@@ -236,10 +232,9 @@ def upload_tfidf_data(client, collection_name, data, model):
     collections = client.get_collections().collections
     collection_names = [collection.name for collection in collections]
 
-    if len(collections):
-        for el in collection_names:
-            client.delete_collection(el)
-            logger.info(f"Коллекция {collection_name} удалена")
+    if collection_name in collection_names:
+        client.delete_collection(collection_name)
+        logger.info(f"Коллекция {collection_name} удалена")
 
     # Создаем коллекцию для разреженных векторов
     client.create_collection(
