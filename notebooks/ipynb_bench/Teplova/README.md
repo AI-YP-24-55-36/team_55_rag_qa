@@ -58,6 +58,8 @@ python client.py --model-names all-MiniLM-L6-v2 paraphrase-multilingual-MiniLM-L
 
 ﻿﻿<img width="711" alt="image" src="https://github.com/user-attachments/assets/d78be4fb-8002-49f9-8229-45c11bb48df1" />
 
+<img width="720" alt="image" src="https://github.com/user-attachments/assets/331cb525-3233-484d-a36b-a203bb68f1eb" />
+
 Колекции в БД:
 
 <img width="1695" alt="image" src="https://github.com/user-attachments/assets/c2b6097b-d177-486b-be08-653954574267" />
