@@ -1,21 +1,25 @@
 import argparse
-from qdrant_client.http.models import Distance, SearchParams, HnswConfigDiff
-from sentence_transformers import SentenceTransformer
-from qdrant_client import QdrantClient
-from read_data_from_csv import read_data
-from bench import benchmark_performance, visualize_results, benchmark_tfidf
-from sklearn.feature_extraction.text import TfidfVectorizer
+import os
 import logging
 import time
 from pathlib import Path
 from tqdm import tqdm
-
+from qdrant_client.http.models import Distance, SearchParams, HnswConfigDiff
+from sentence_transformers import SentenceTransformer
+from fastembed import SparseTextEmbedding
+from qdrant_client import QdrantClient
+from read_data_from_csv import read_data
+from bench import benchmark_performance, visualize_results, benchmark_tfidf, benchmark_bm25
+from sklearn.feature_extraction.text import TfidfVectorizer
 from qdrant_client import models
-import os
+from cache_embed import generate_and_save_embeddings
+from load_config import load_config
+from viz_bm25 import visualize_results_bm25
 
-# Создаем директории для логов и графиков, если они не существуют
-Path('./logs').mkdir(exist_ok=True)
-Path('./logs/graphs').mkdir(exist_ok=True)
+config = load_config()
+BASE_DIR = Path(config["paths"]["base_dir"])
+LOGS_DIR = BASE_DIR / config["paths"]["logs_dir"]
+GRAPHS_DIR = BASE_DIR / config["paths"]["graphs_dir"]
 
 # Настройка логгера для текущего модуля
 logger = logging.getLogger('client')
@@ -23,7 +27,7 @@ logger.setLevel(logging.INFO)
 logger.propagate = False  # Отключаем передачу логов родительским логгерам
 
 # Создание обработчика для записи логов в файл
-file_handler = logging.FileHandler('./logs/client.log')
+file_handler = logging.FileHandler(f'{LOGS_DIR}/client.log')
 file_handler.setLevel(logging.INFO)
 
 # Форматирование логов
@@ -91,6 +95,70 @@ def create_collection(client, collection_name, vector_size, distance=Distance.CO
     )
     logger.info(f"Коллекция {collection_name} создана")
 
+def upload_bm25_data(client, collection_name, data):
+    """Загрузка данных в Qdrant с использованием встроенного BM25"""
+
+    logger.info(f"Загрузка {len(data)} документов в коллекцию {collection_name} с использованием BM25")
+
+    # Проверяем, существует ли коллекция
+    collections = client.get_collections().collections
+    collection_names = [collection.name for collection in collections]
+
+    if collection_name in collection_names:
+        client.delete_collection(collection_name)
+        logger.info(f"Коллекция {collection_name} удалена")
+
+    # Создаем коллекцию с BM25-индексом
+
+    client.create_collection(
+        collection_name=collection_name,
+        vectors_config={},
+        sparse_vectors_config={
+            "bm25": models.SparseVectorParams(
+                index=models.SparseIndexParams(on_disk=False),
+                modifier=models.Modifier.IDF
+            )
+        }
+    )
+
+
+
+    logger.info(f"Коллекция {collection_name} создана с поддержкой BM25")
+
+
+
+    # Подготавливаем данные для загрузки
+    bm25_embedding_model = SparseTextEmbedding("Qdrant/bm25")
+
+    points = []
+
+    for item in data:
+
+        vector = list(bm25_embedding_model.query_embed(item["context"]))
+
+
+        if vector:
+            sparse_embedding = vector[0]
+            points.append(
+                models.PointStruct(
+                    id=item["id"],
+                    payload= item,
+                    vector={
+                        "bm25": {
+                            "values": sparse_embedding.values.tolist(),
+                            "indices": sparse_embedding.indices.tolist()
+                        }
+                    }
+                )
+            )
+
+    client.upload_points(
+        collection_name=collection_name,
+        points=points
+    )
+
+
+    logger.info(f"Загрузка данных завершена для коллекции {collection_name}")
 
 def upload_tfidf_data(client, collection_name, data, model):
     """Загрузка данных TF-IDF в Qdrant с использованием разреженных векторов"""
@@ -124,6 +192,70 @@ def upload_tfidf_data(client, collection_name, data, model):
     texts = [item["context"] for item in data]
 
     # Генерируем разреженные векторы
+
+    vectors = model.transform(texts)
+
+    # Загружаем точки
+    points = []
+    for i in range(vectors.shape[0]):
+        indices = vectors[i].indices.tolist()
+        values = vectors[i].data.tolist()
+
+        points.append(
+            models.PointStruct(
+                id=data[i]["id"],
+                payload=data[i],
+                vector={
+                    'text': models.SparseVector(
+                        indices=indices, values=values
+                    )
+                },
+            )
+        )
+
+    # Загружаем точки в Qdrant
+    client.upload_points(
+        collection_name=collection_name,
+        points=points,
+        parallel=4,
+        max_retries=3,
+    )
+
+    logger.info(
+        f"Загрузка данных TF-IDF завершена для коллекции {collection_name}")
+def upload_tfidf_data(client, collection_name, data, model):
+    """Загрузка данных TF-IDF в Qdrant с использованием разреженных векторов"""
+    logger.info(
+        f"Загрузка {len(data)} документов в коллекцию {collection_name} с использованием TF-IDF")
+
+    # Проверяем, существует ли коллекция
+    collections = client.get_collections().collections
+    collection_names = [collection.name for collection in collections]
+
+    if collection_name in collection_names:
+        client.delete_collection(collection_name)
+        logger.info(f"Коллекция {collection_name} удалена")
+
+    # Создаем коллекцию для разреженных векторов
+    client.create_collection(
+        collection_name=collection_name,
+        vectors_config={},
+        sparse_vectors_config={
+            "text": models.SparseVectorParams(
+                index=models.SparseIndexParams(
+                    on_disk=False,
+                )
+            )
+        },
+    )
+    logger.info(
+        f"Коллекция {collection_name} создана для разреженных векторов")
+
+    # Извлекаем тексты
+    texts = [item["context"] for item in data]
+
+    # Генерируем разреженные векторы
+
     vectors = model.transform(texts)
 
     # Загружаем точки
@@ -172,7 +304,14 @@ def upload_data(client, collection_name, data, model, batch_size=100):
         texts = [item["context"] for item in batch]
 
         # Генерация эмбеддингов для батча
-        vectors = model.encode(texts, show_progress_bar=False)
+        args = parse_args()
+        vectors = generate_and_save_embeddings(
+            texts=texts,
+            model=model,
+            array_name=f'{collection_name}+{args.limit}',
+            save_dir="embeddings"
+        )
+
 
         # Подготовка точек для загрузки
         points = []
@@ -232,8 +371,10 @@ def main():
     print(f"🔄 Выбранные модели для сравнения: {', '.join(all_models)}")
 
     # Разделяем модели на обычные и TF-IDF
-    models_to_compare = [model for model in all_models if model != 'TF-IDF']
+    # models_to_compare = [model for model in all_models if model != 'BM25']
+    models_to_compare = [model for model in all_models if model not in ['BM25', 'TF-IDF']]
     use_tfidf = 'TF-IDF' in all_models
+    use_bm25 = 'BM25' in all_models
 
     # Инициализация моделей
     model_instances = {}
@@ -312,6 +453,7 @@ def main():
                 if algo_name.startswith("HNSW"):
                     client.update_collection(
                         collection_name=collection_name,
+                        optimizers_config=models.OptimizersConfigDiff(indexing_threshold=50, default_segment_number=5),
                         hnsw_config=HnswConfigDiff(
                             m=args.hnsw_m,
                             ef_construct=args.ef_construct,
@@ -333,6 +475,54 @@ def main():
 
                 # Сохраняем результаты точности
                 accuracy_results[model_name][algo_name] = benchmark_results["accuracy"]
+    # Запуск бенчмарка для BM25, если он выбран
+    bm25_results = None
+    if use_bm25:
+        print("\n" + "=" * 80)
+        print("🔍 ОЦЕНКА ПРОИЗВОДИТЕЛЬНОСТИ BM25")
+        print("=" * 80)
+        logger.info("Запуск оценки производительности BM25")
+
+        # Создание коллекции для BM25
+        bm25_collection_name = f"{args.collection_name}_bm25"
+
+        # Загрузка данных BM25
+        upload_bm25_data(client, bm25_collection_name, data_for_db)
+
+        # Результаты для BM25
+        bm25_speed_results = {}
+        bm25_accuracy_results = {}
+
+        # Оценка для каждого алгоритма поиска
+        for algo_name, search_params in search_algorithms.items():
+            logger.info(f"Оценка алгоритма {algo_name} с моделью BM25")
+            print(f"\n🔍 Оценка алгоритма {algo_name} с моделью BM25")
+
+            # Запуск бенчмарка для BM25 с текущими параметрами поиска
+            benchmark_results = benchmark_bm25(
+                client=client,
+                collection_name=bm25_collection_name,
+                test_data=data_df,
+                search_params=search_params,
+                top_k_values=[1, 3]
+            )
+
+            # Сохраняем результаты скорости
+            bm25_speed_results[algo_name] = benchmark_results["speed"]
+
+            # Сохраняем результаты точности
+            bm25_accuracy_results[algo_name] = benchmark_results["accuracy"]
+
+        # Сохраняем результаты BM25 для визуализации
+        bm25_results = {
+            "speed": bm25_speed_results,
+            "accuracy": bm25_accuracy_results
+        }
+
+        # Вывод результатов скорости
+        print("\n" + "=" * 80)
+        print("РЕЗУЛЬТАТЫ ОЦЕНКИ СКОРОСТИ ПОИСКА")
+        print("=" * 80)
 
     # Запуск бенчмарка для TF-IDF, если она выбрана
     tfidf_results = None
@@ -380,10 +570,112 @@ def main():
             "accuracy": tfidf_accuracy_results
         }
 
-    # Вывод результатов скорости
-    print("\n" + "="*80)
-    print("РЕЗУЛЬТАТЫ ОЦЕНКИ СКОРОСТИ ПОИСКА")
-    print("="*80)
+        # Вывод результатов скорости
+        print("\n" + "="*80)
+        print("РЕЗУЛЬТАТЫ ОЦЕНКИ СКОРОСТИ ПОИСКА")
+        print("="*80)
+
+    # Запуск бенчмарка для каждой модели с dense векторами
+    if models_to_compare:
+        for model_name in models_to_compare:
+            model = model_instances[model_name]
+
+            # Создание коллекции
+            collection_name = f"{args.collection_name}_{model_name.replace('-', '_')}"
+            create_collection(client, collection_name, args.vector_size)
+
+            # Загрузка данных
+            upload_data(client, collection_name,
+                        data_for_db, model, args.batch_size)
+
+            # Результаты для текущей модели
+            speed_results[model_name] = {}
+            accuracy_results[model_name] = {}
+
+            # Оценка для каждого алгоритма
+            for algo_name, search_params in search_algorithms.items():
+                logger.info(
+                    f"Оценка алгоритма {algo_name} с моделью {model_name}")
+                print(
+                    f"\n🔍 Оценка алгоритма {algo_name} с моделью {model_name}")
+
+                # Обновление параметров HNSW
+                if algo_name.startswith("HNSW"):
+                    client.update_collection(
+                        collection_name=collection_name,
+                        optimizers_config=models.OptimizersConfigDiff(indexing_threshold=50, default_segment_number=5),
+                        hnsw_config=HnswConfigDiff(
+                            m=args.hnsw_m,
+                            ef_construct=args.ef_construct,
+                        )
+                    )
+
+                # Запуск объединенной функции оценки производительности
+                benchmark_results = benchmark_performance(
+                    client=client,
+                    collection_name=collection_name,
+                    test_data=data_df,
+                    model=model,
+                    search_params=search_params,
+                    top_k_values=[1, 3]
+                )
+
+                # Сохраняем результаты скорости
+                speed_results[model_name][algo_name] = benchmark_results["speed"]
+
+                # Сохраняем результаты точности
+                accuracy_results[model_name][algo_name] = benchmark_results["accuracy"]
+
+    # Запуск бенчмарка для TF-IDF, если она выбрана
+    tfidf_results = None
+    if use_tfidf and tfidf_model:
+        print("\n" + "=" * 80)
+        print("🔍 ОЦЕНКА ПРОИЗВОДИТЕЛЬНОСТИ TF-IDF")
+        print("=" * 80)
+        logger.info("Запуск оценки производительности TF-IDF")
+
+        # Создание коллекции для TF-IDF
+        tfidf_collection_name = f"{args.collection_name}_tfidf"
+
+        # Загрузка данных TF-IDF
+        upload_tfidf_data(client, tfidf_collection_name,
+                          data_for_db, tfidf_model)
+
+        # Результаты для TF-IDF
+        tfidf_speed_results = {}
+        tfidf_accuracy_results = {}
+
+        # Оценка для каждого алгоритма поиска
+        for algo_name, search_params in search_algorithms.items():
+            logger.info(f"Оценка алгоритма {algo_name} с моделью TF-IDF")
+            print(f"\n🔍 Оценка алгоритма {algo_name} с моделью TF-IDF")
+
+            # Запуск бенчмарка для TF-IDF с текущими параметрами поиска
+            benchmark_results = benchmark_tfidf(
+                client=client,
+                collection_name=tfidf_collection_name,
+                test_data=data_df,
+                model=tfidf_model,
+                search_params=search_params,
+                top_k_values=[1, 3]
+            )
+
+            # Сохраняем результаты скорости
+            tfidf_speed_results[algo_name] = benchmark_results["speed"]
+
+            # Сохраняем результаты точности
+            tfidf_accuracy_results[algo_name] = benchmark_results["accuracy"]
+
+        # Сохраняем результаты TF-IDF для визуализации
+        tfidf_results = {
+            "speed": tfidf_speed_results,
+            "accuracy": tfidf_accuracy_results
+        }
+
+        # Вывод результатов скорости
+        print("\n" + "=" * 80)
+        print("РЕЗУЛЬТАТЫ ОЦЕНКИ СКОРОСТИ ПОИСКА")
+        print("=" * 80)
 
     # Вывод результатов для dense векторов
     if models_to_compare:
@@ -415,10 +707,10 @@ def main():
                     print(
                         f"    Top-{k}: Точность = {result['accuracy']:.4f} ({result['correct']}/{result['total']})")
 
-    # Вывод результатов точности
-    print("\n" + "="*80)
-    print("РЕЗУЛЬТАТЫ ОЦЕНКИ ТОЧНОСТИ ПОИСКА")
-    print("="*80)
+        # Вывод результатов точности
+        print("\n" + "=" * 80)
+        print("РЕЗУЛЬТАТЫ ОЦЕНКИ ТОЧНОСТИ ПОИСКА")
+        print("=" * 80)
 
     # Вывод результатов для dense векторов
     if models_to_compare:
@@ -441,14 +733,72 @@ def main():
             accuracy_results=accuracy_results,
             tfidf_results=tfidf_results,
             title_prefix="Сравнение производительности RAG системы",
-            save_dir="./logs/graphs"
+            save_dir=f"{GRAPHS_DIR}"
         )
 
+        logger.info("Бенчмарк завершен успешно")
+        print("\n" + "=" * 80)
+        print("✅ БЕНЧМАРК ЗАВЕРШЕН УСПЕШНО")
+        print(f"Графики сохранены в директории {GRAPHS_DIR}")
+        print("=" * 80)
+
+    # Вывод результатов для BM25
+    if use_bm25 and bm25_results:
+        print(f"\nМодель: BM25")
+
+        for algo_name, speed_data in bm25_results["speed"].items():
+            print(f"  Алгоритм: {algo_name}")
+            print(f"    Среднее время: {speed_data['avg_time'] * 1000:.2f} мс")
+            print(f"    Медианное время: {speed_data['median_time'] * 1000:.2f} мс")
+            print(f"    Максимальное время: {speed_data['max_time'] * 1000:.2f} мс")
+            print(f"    Минимальное время: {speed_data['min_time'] * 1000:.2f} мс")
+
+        # Вывод результатов точности
+        print("\n" + "=" * 80)
+        print("РЕЗУЛЬТАТЫ ОЦЕНКИ ТОЧНОСТИ ПОИСКА")
+        print("=" * 80)
+
+    # Вывод результатов для dense векторов
+    if models_to_compare:
+        for model_name in models_to_compare:
+            print(f"\nМодель: {model_name}")
+
+            for algo_name in accuracy_results[model_name].keys():
+                print(f"  Алгоритм: {algo_name}")
+
+                for k in [1, 3]:
+                    if k in accuracy_results[model_name][algo_name]:
+                        result = accuracy_results[model_name][algo_name][k]
+                        print(
+                            f"    Top-{k}: Точность = {result['accuracy']:.4f} ({result['correct']}/{result['total']})")
+
+    # Вывод результатов для BM25
+    if use_bm25 and bm25_results:
+        print(f"\nМодель: BM25")
+
+        for algo_name, accuracy_data in bm25_results["accuracy"].items():
+            print(f"  Алгоритм: {algo_name}")
+
+            for k in [1, 3]:
+                if k in accuracy_data:
+                    result = accuracy_data[k]
+                    print(f"    Top-{k}: Точность = {result['accuracy']:.4f} ({result['correct']}/{result['total']})")
+
+    # Визуализация результатов
+    if (models_to_compare or use_bm25):
+        visualize_results_bm25(
+            speed_results=speed_results,
+            accuracy_results=accuracy_results,
+            bm25_results=bm25_results,
+            title_prefix="Сравнение производительности RAG системы",
+            save_dir=f"{GRAPHS_DIR}"
+        )
+    #
     logger.info("Бенчмарк завершен успешно")
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("✅ БЕНЧМАРК ЗАВЕРШЕН УСПЕШНО")
-    print("Графики сохранены в директории ./logs/graphs/")
-    print("="*80)
+    print(f"Графики сохранены в директории {GRAPHS_DIR}")
+    print("=" * 80)
 
 
 if __name__ == "__main__":

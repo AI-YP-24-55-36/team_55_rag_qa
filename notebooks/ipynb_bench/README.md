@@ -8,6 +8,7 @@ https://disk.yandex.ru/i/bn1o9ytBIm5NoA
 ## Возможности
 
 - Сравнение различных моделей эмбеддингов (SentenceTransformer)
+- Сравнение с BM25
 - Сравнение с классическим TF-IDF подходом
 - Оценка скорости и точности поиска
 - Визуализация результатов в виде графиков
@@ -38,15 +39,32 @@ python client.py
 
 ```bash
 python client.py --model-names all-MiniLM-L6-v2 paraphrase-multilingual-MiniLM-L12-v2 TF-IDF --limit 100
+python client.py --model-names all-MiniLM-L6-v2 paraphrase-multilingual-MiniLM-L12-v2 BM25 --limit 100
 ```
 В результате получаем два графика для одного бенча:
 
 - сравнение по скорости поиска по трем методам поиска:
 <img width="1125" alt="image" src="https://github.com/user-attachments/assets/d2879a56-4724-4865-aad9-bbb16f378c7a" />
 
+<img width="1161" alt="image" src="https://github.com/user-attachments/assets/ba30dab0-9bf6-42f9-a36d-9aa281b96f8f" />
+
 
 - сравнение по точности поиска между разными моделями конвертации текстов в эмбеддинги и методами поиска
 <img width="1124" alt="image" src="https://github.com/user-attachments/assets/e8ca95d4-d1ec-48ad-b230-ef24c7f6056c" />
+
+<img width="1165" alt="image" src="https://github.com/user-attachments/assets/29bcb58b-1f2a-479b-bbd3-44b5a90e7fe8" />
+
+результаты сохраняются в файл:
+
+﻿﻿<img width="711" alt="image" src="https://github.com/user-attachments/assets/d78be4fb-8002-49f9-8229-45c11bb48df1" />
+
+<img width="720" alt="image" src="https://github.com/user-attachments/assets/331cb525-3233-484d-a36b-a203bb68f1eb" />
+
+Колекции в БД:
+
+<img width="1695" alt="image" src="https://github.com/user-attachments/assets/c2b6097b-d177-486b-be08-653954574267" />
+
+
 
 
 ### Основные параметры
@@ -109,6 +127,10 @@ python client.py --hnsw-ef 128 --hnsw-m 32 --ef-construct 400
 - `client.py` - основной скрипт для запуска бенчмарка
 - `bench.py` - функции для оценки производительности и визуализации
 - `read_data_from_csv.py` - функции для чтения данных
+- `config.yml` - содержит пути к папкам для сохранения логов и картинок
+- `load_config.py` - загружает конфигурацию путей
+- `cache_embed.py` - кэширование эмбедингов, сохраняет в numpy и выгружает в файл, загружает из файла, если уже существует
+- `viz_bm25.py` - отрисовка графиков сравнения
 
 ## Примечания
 
@@ -120,9 +142,11 @@ python client.py --hnsw-ef 128 --hnsw-m 32 --ef-construct 400
 
 1. Exact_Search работает медленнее всего
 2. Sparce вектора извлекаются быстрее, чем dense
-3. Лучшая точность у Sparce векторов (tf-idf) 
+3. Лучшая точность у Sparce векторов (bm25) 
 4. Метод поиска в нашем случае не влияет на точность
 5. Были испробованы разные значени ef_construct - параметра качества при построении индекса, при увеличении значения, время извлечения текста увеличивается
 6. При увеличении гиперпараметра m - количество связей для каждой вершины, время извлечени контекста увеличивается
 7. Изменение гиперпараметра hnsw_ef в нашем случае не сказалось на качестве (вероятно связано со структурой датасета, он довольно подогнанный под задачу)
+8. Так как данных мало, то нужно изменять параметр indexing_threshold, чтобы запустить построение графа в HNSW
+`optimizers_config=models.OptimizersConfigDiff(indexing_threshold=50)`
 
