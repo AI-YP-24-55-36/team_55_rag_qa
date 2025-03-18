@@ -453,6 +453,7 @@ def main():
                 if algo_name.startswith("HNSW"):
                     client.update_collection(
                         collection_name=collection_name,
+                        optimizers_config=models.OptimizersConfigDiff(indexing_threshold=50, default_segment_number=5),
                         hnsw_config=HnswConfigDiff(
                             m=args.hnsw_m,
                             ef_construct=args.ef_construct,
@@ -602,6 +603,7 @@ def main():
                 if algo_name.startswith("HNSW"):
                     client.update_collection(
                         collection_name=collection_name,
+                        optimizers_config=models.OptimizersConfigDiff(indexing_threshold=50, default_segment_number=5),
                         hnsw_config=HnswConfigDiff(
                             m=args.hnsw_m,
                             ef_construct=args.ef_construct,
