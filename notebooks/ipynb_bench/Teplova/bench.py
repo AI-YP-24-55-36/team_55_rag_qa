@@ -6,10 +6,12 @@ import time
 import sys
 import datetime
 from tqdm import tqdm
-from qdrant_client.http.models import Filter, FieldCondition, MatchText
+from fastembed import SparseTextEmbedding
+from qdrant_client.models import SearchRequest
 from qdrant_client import models
 from log_output import Tee
 from load_config import load_config
+from viz_bm25 import visualize_results_bm25
 
 config = load_config()
 BASE_DIR = Path(config["paths"]["base_dir"])
@@ -190,41 +192,50 @@ def benchmark_bm25(client, collection_name, test_data, search_params=None, top_k
     # Создаем прогресс-бар
     progress_bar = tqdm(total=total_queries, desc="Обработка запросов BM25", unit="запрос")
 
+    bm25_embedding_model = SparseTextEmbedding("Qdrant/bm25")
+
     # Обрабатываем каждый запрос отдельно
     for idx, row in test_data.iterrows():
         query_text = row['question']
         true_context = row['context']
 
+        vector = list(bm25_embedding_model.query_embed(query_text))[0]
+        query_indices = vector.indices.tolist()
+        query_values = vector.values.tolist()
+
         # Измеряем время поиска
         start_time = time.time()
 
+        # Выполняем поиск
         search_results = client.query_points(
             collection_name=collection_name,
-            query_filter=Filter(
-                must=[
-                    FieldCondition(
-                        key="context",
-                        match=MatchText(text=query_text)
-                    )
-                ]
+            query=models.SparseVector(
+                indices=query_indices,
+                values=query_values,
             ),
+            using="bm25",
             limit=max_top_k,
-            with_payload=True,
-            with_vectors=False  #  не нужны векторы в результатах
+            search_params=search_params
         )
+
 
         end_time = time.time()
         query_time = end_time - start_time
         results["speed"]["query_times"].append(query_time)
 
         # Оцениваем точность для разных значений top_k
-        found_contexts = [point.payload.get('context', '') for point in search_results.points]
+        # found_contexts = [point.payload.get('context', '') for point in search_results.points]
 
-        # Проверяем точность для каждого значения top_k
+        found_contexts = []
+        for point in search_results.points:
+            context = point.payload.get('context', '')
+            score = point.score  # Оценка релевантности (если доступна)
+            found_contexts.append((context, score))
+
+
         for k in top_k_values:
             results["accuracy"][k]["total"] += 1
-
-            if true_context in found_contexts[:k]:
+            if true_context in found_contexts[0][:k]:
                 results["accuracy"][k]["correct"] += 1
                 logger.info(f"BM25 Запрос {idx}: '{query_text[:50]}...' - Контекст найден в top-{k} ✓")
             else:
