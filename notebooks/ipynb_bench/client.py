@@ -79,9 +79,10 @@ def create_collection(client, collection_name, vector_size, distance=Distance.CO
     collections = client.get_collections().collections
     collection_names = [collection.name for collection in collections]
 
-    if collection_name in collection_names:
-        client.delete_collection(collection_name)
-        logger.info(f"Коллекция {collection_name} удалена")
+    if len(collections):
+        for el in collection_names:
+            client.delete_collection(el)
+            print(f"Collection {el} has been cleared")
 
     # Создаем коллекцию с именованными векторами
     client.create_collection(
