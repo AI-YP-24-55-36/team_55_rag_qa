@@ -9,11 +9,12 @@ from sentence_transformers import SentenceTransformer
 from fastembed import SparseTextEmbedding
 from qdrant_client import QdrantClient
 from read_data_from_csv import read_data
-from bench import benchmark_performance, benchmark_bm25
 from qdrant_client import models
 from cache_embed import generate_and_save_embeddings
 from load_config import load_config
 from viz_bm25 import visualize_results_bm25
+from bench import benchmark_performance, benchmark_bm25
+
 
 config = load_config()
 BASE_DIR = Path(config["paths"]["base_dir"])
