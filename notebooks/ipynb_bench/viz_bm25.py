@@ -34,7 +34,7 @@ logger.addHandler(file_handler)
 
 
 def visualize_results_bm25(speed_results, accuracy_results, bm25_results=None, title_prefix="Результаты бенчмарка",
-                      save_dir=f"{GRAPHS_DIR}/graphs"):
+                      save_dir=f"{GRAPHS_DIR}"):
     print(f"\n📊 Создание визуализаций результатов...")
     logger.info("Создание визуализаций результатов")
 

@@ -372,10 +372,12 @@ def print_comparison(results_without_rerank, results_with_rerank, top_k_values=[
 
 
 def visualize_results_rerank(results_without_rerank, results_with_rerank, top_k_values=[1, 3],
-                             title_prefix="Сравнение реранкинга", save_dir=f"{GRAPHS_DIR}/graphs"):
+                             title_prefix="Сравнение реранкинга", save_dir=f"{GRAPHS_DIR}"):
 
     print(f"\n📊 Создание визуализаций результатов реранкинга...")
     logger.info("Создание визуализаций результатов реранкинга")
+
+    print(save_dir)
 
     # Создаем директорию для сохранения графиков, если она не существует
     Path(save_dir).mkdir(exist_ok=True, parents=True)
@@ -405,24 +407,19 @@ def visualize_results_rerank(results_without_rerank, results_with_rerank, top_k_
 
     # --- 2️⃣ Визуализация точности поиска ---
     plt.figure(figsize=(10, 5))
-
     acc_before = [results_without_rerank["accuracy"]["before_rerank"][k]["accuracy"] for k in top_k_values]
     acc_after = [results_with_rerank["accuracy"]["after_rerank"][k]["accuracy"] for k in top_k_values]
-
     x = np.arange(len(top_k_values))  # позиции по X
-    width = 0.3  # ширина столбцов
+    width = 0.1  # ширина столбцов
 
-    # Создаём график точности
     plt.bar(x - width / 2, acc_before, width, label="Без реранкинга", color='#1f77b4')  # Синий цвет
     plt.bar(x + width / 2, acc_after, width, label="С реранкингом", color='#ff7f0e')  # Оранжевый цвет
-
     plt.xticks(ticks=x, labels=[f"Top-{k}" for k in top_k_values])  # подписи оси X
     plt.ylabel("Точность (Accuracy)")
     plt.title(f"{title_prefix}: Точность поиска")
     plt.legend()
     plt.grid(axis='y', linestyle='--', alpha=0.7)
 
-    # Сохранение графика (до plt.show())
     accuracy_save_path = f"{save_dir}/accuracy_comparison_{timestr}_hybrid.png"
     plt.savefig(accuracy_save_path, dpi=300, bbox_inches='tight')
     logger.info(f"График точности сохранен в {accuracy_save_path}")
@@ -431,7 +428,7 @@ def visualize_results_rerank(results_without_rerank, results_with_rerank, top_k_
 if __name__ == "__main__":
 
     args = parse_args()
-    args.limit = 1000
+    args.limit = 5
 
     data_for_db, data_df = read_data(limit=args.limit)
     client = QdrantClient(host=args.qdrant_host, port=args.qdrant_port)
