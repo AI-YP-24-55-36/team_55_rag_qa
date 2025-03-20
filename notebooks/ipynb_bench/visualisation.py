@@ -35,8 +35,7 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 
-def visualize_results(speed_results, accuracy_results, bm25_results=None, title_prefix="Результаты бенчмарка",
-                      save_dir=f"{GRAPHS_DIR}"):
+def visualize_results(speed_results, accuracy_results, bm25_results=None, title_prefix="Результаты бенчмарка", save_dir="./logs/graphs"):
     print(f"\n📊 Создание визуализаций результатов...")
     logger.info("Создание визуализаций результатов")
 
@@ -119,13 +118,14 @@ def visualize_results(speed_results, accuracy_results, bm25_results=None, title_
                     rotation=45
                 )
 
-    # Добавляем BM25, если он есть
+    # Добавляем BM25 если он есть
     if has_bm25:
         i = len(models)  # Индекс для BM25
 
         if bm25_has_algos:
             # Если у BM25 есть разные алгоритмы, отображаем их как отдельные столбцы
-            values = [bm25_results["speed"][algo]["avg_time"] * 1000 for algo in algorithms]
+            values = [bm25_results["speed"][algo]
+                      ["avg_time"] * 1000 for algo in algorithms]
 
             plt.bar(
                 index + i * bar_width,
@@ -160,7 +160,7 @@ def visualize_results(speed_results, accuracy_results, bm25_results=None, title_
                 index + i * bar_width,
                 bm25_values,
                 bar_width,
-                label="BM25",
+                label="TF-IDF",
                 color=colors[i],
                 edgecolor='black',
                 linewidth=0.5,
@@ -213,10 +213,10 @@ def visualize_results(speed_results, accuracy_results, bm25_results=None, title_
         else:
             algorithms = []
 
-    # Если есть BM25, добавляем его top_k значения
+    # Если есть TF-IDF, добавляем его top_k значения
     if has_bm25:
         if bm25_has_algos:
-            # Если у BM25 есть разные алгоритмы
+            # Если у TF-IDF есть разные алгоритмы
             for algo in bm25_results["accuracy"].keys():
                 all_top_k.update(bm25_results["accuracy"][algo].keys())
         else:

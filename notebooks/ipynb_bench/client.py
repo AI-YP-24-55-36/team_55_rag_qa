@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 
 from tqdm import tqdm
-from sentence_transformers import SentenceTransformer, CrossEncoder
+from sentence_transformers import SentenceTransformer
 from fastembed import SparseTextEmbedding
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, SearchParams, HnswConfigDiff
@@ -86,10 +86,14 @@ def create_collection(client, collection_name, vector_size, distance=Distance.CO
     collections = client.get_collections().collections
     collection_names = [collection.name for collection in collections]
 
-    if len(collections):
-        for el in collection_names:
-            client.delete_collection(el)
-            print(f"Collection {el} has been cleared")
+    if collection_name in collection_names:
+        client.delete_collection(collection_name)
+        logger.info(f"Коллекция {collection_name} удалена")
+
+    # if len(collections):
+    #     for el in collection_names:
+    #         client.delete_collection(el)
+    #         print(f"Collection {el} has been cleared")
 
     # Создаем коллекцию с именованными векторами
     client.create_collection(
@@ -280,6 +284,16 @@ def main():
             progress_bar.close()
             print(f"✅ Модели инициализированы: {', '.join(models_to_compare)}")
 
+        # Инициализация BM25 модели отдельно, если она выбрана
+        bm25_model = None
+        if use_bm25:
+            print(f"🔄 Инициализация модели BM25...")
+            logger.info("Инициализация модели BM25")
+
+            bm25_collection_name = f"{args.collection_name}_bm25"
+            # Загрузка данных BM25
+            upload_bm25_data(client, bm25_collection_name, data_for_db)
+            bm25_model = 'BM25'
 
         # Определение алгоритмов поиска для dense векторов
         search_algorithms = {
@@ -288,7 +302,7 @@ def main():
             "HNSW High Precision ef=512": SearchParams(hnsw_ef=512)
         }
 
-        # Результаты бенчмарка для dense векторов
+        # Результаты для BM25
         speed_results = {}
         accuracy_results = {}
 
@@ -320,7 +334,6 @@ def main():
                     if algo_name.startswith("HNSW"):
                         client.update_collection(
                             collection_name=collection_name,
-                            optimizers_config=models.OptimizersConfigDiff(indexing_threshold=90, default_segment_number=5),
                             hnsw_config=HnswConfigDiff(
                                 m=args.hnsw_m,
                                 ef_construct=args.ef_construct,
@@ -342,9 +355,10 @@ def main():
 
                     # Сохраняем результаты точности
                     accuracy_results[model_name][algo_name] = benchmark_results["accuracy"]
-        # Запуск бенчмарка для BM25, если он выбран
+
+        # Запуск бенчмарка для BM25, если она выбрана
         bm25_results = None
-        if use_bm25:
+        if use_bm25 and bm25_model:
             print("\n" + "=" * 80)
             print("🔍 ОЦЕНКА ПРОИЗВОДИТЕЛЬНОСТИ BM25")
             print("=" * 80)
@@ -354,7 +368,8 @@ def main():
             bm25_collection_name = f"{args.collection_name}_bm25"
 
             # Загрузка данных BM25
-            upload_bm25_data(client, bm25_collection_name, data_for_db)
+            upload_bm25_data(client, bm25_collection_name,
+                              data_for_db)
 
             # Результаты для BM25
             bm25_speed_results = {}
@@ -380,29 +395,81 @@ def main():
                 # Сохраняем результаты точности
                 bm25_accuracy_results[algo_name] = benchmark_results["accuracy"]
 
-            # Сохраняем результаты BM25 для визуализации
-            bm25_results = {
-                "speed": bm25_speed_results,
-                "accuracy": bm25_accuracy_results
-            }
+            # Сохраняем результаты accuracy_results для визуализации
+                bm25_results = {
+                    "speed": bm25_speed_results,
+                    "accuracy": bm25_accuracy_results
+                }
 
-            # Вывод результатов скорости
-            print("\n" + "=" * 80)
-            print("РЕЗУЛЬТАТЫ ОЦЕНКИ СКОРОСТИ ПОИСКА")
-            print("=" * 80)
+        # Вывод результатов скорости
+        print("\n" + "=" * 80)
+        print("РЕЗУЛЬТАТЫ ОЦЕНКИ СКОРОСТИ ПОИСКА")
+        print("=" * 80)
+
+        # Вывод результатов для dense векторов
+        if models_to_compare:
+            for model_name in models_to_compare:
+                print(f"\nМодель: {model_name}")
+
+                for algo_name in speed_results[model_name].keys():
+                    result = speed_results[model_name][algo_name]
+
+                    print(f"  Алгоритм: {algo_name}")
+                    print(f"    Среднее время: {result['avg_time'] * 1000:.2f} мс")
+                    print(
+                        f"    Медианное время: {result['median_time'] * 1000:.2f} мс")
+                    print(
+                        f"    Максимальное время: {result['max_time'] * 1000:.2f} мс")
+                    print(
+                        f"    Минимальное время: {result['min_time'] * 1000:.2f} мс")
+
+            # Вывод результатов для BM25
+            if use_bm25 and bm25_results:
+                print(f"\nМодель: BM25")
+
+                for algo_name in bm25_results["speed"].keys():
+                    result = bm25_results["speed"][algo_name]
+
+                    print(f"  Алгоритм: {algo_name}")
+                    print(f"    Среднее время: {result['avg_time'] * 1000:.2f} мс")
+                    print(
+                        f"    Медианное время: {result['median_time'] * 1000:.2f} мс")
+                    print(
+                        f"    Максимальное время: {result['max_time'] * 1000:.2f} мс")
+                    print(
+                        f"    Минимальное время: {result['min_time'] * 1000:.2f} мс")
 
 
+        # Вывод результатов точности
+        print("\n" + "=" * 80)
+        print("РЕЗУЛЬТАТЫ ОЦЕНКИ ТОЧНОСТИ ПОИСКА")
+        print("=" * 80)
+
+        # Вывод результатов для dense векторов
+        if models_to_compare:
+            for model_name in models_to_compare:
+                print(f"\nМодель: {model_name}")
+
+                for algo_name in accuracy_results[model_name].keys():
+                    print(f"  Алгоритм: {algo_name}")
+
+                    for k in [1, 3]:
+                        if k in accuracy_results[model_name][algo_name]:
+                            result = accuracy_results[model_name][algo_name][k]
+                            print(
+                                f"    Top-{k}: Точность = {result['accuracy']:.4f} ({result['correct']}/{result['total']})")
         # Вывод результатов для BM25
         if use_bm25 and bm25_results:
             print(f"\nМодель: BM25")
 
-            for algo_name, accuracy_data in bm25_results["accuracy"].items():
+            for algo_name in bm25_results["accuracy"].keys():
                 print(f"  Алгоритм: {algo_name}")
 
                 for k in [1, 3]:
-                    if k in accuracy_data:
-                        result = accuracy_data[k]
-                        print(f"    Top-{k}: Точность = {result['accuracy']:.4f} ({result['correct']}/{result['total']})")
+                    if k in bm25_results["accuracy"][algo_name]:
+                        result = bm25_results["accuracy"][algo_name][k]
+                        print(
+                            f"    Top-{k}: Точность = {result['accuracy']:.4f} ({result['correct']}/{result['total']})")
 
         # Визуализация результатов
         if (models_to_compare or use_bm25):
@@ -411,13 +478,13 @@ def main():
                 accuracy_results=accuracy_results,
                 bm25_results=bm25_results,
                 title_prefix="Сравнение производительности RAG системы",
-                save_dir=f"{GRAPHS_DIR}"
+                save_dir="./logs/graphs"
             )
-        #
+
         logger.info("Бенчмарк завершен успешно")
         print("\n" + "=" * 80)
         print("✅ БЕНЧМАРК ЗАВЕРШЕН УСПЕШНО")
-        print(f"Графики сохранены в директории {GRAPHS_DIR}")
+        print("Графики сохранены в директории ./logs/graphs/")
         print("=" * 80)
 
     else:
