@@ -49,15 +49,19 @@ python client.py --hybrid 1 --limit 1000
 - сравнение по точности поиска между разными моделями конвертации текстов в эмбеддинги и методами поиска
 <img width="1165" alt="image" src="https://github.com/user-attachments/assets/29bcb58b-1f2a-479b-bbd3-44b5a90e7fe8" />
 
+- при  запуски модели с параметром `--hybrid 1` активируется гибридная модель с реранкингом, в результате получаем сравнение:
+
+﻿<img width="1398" alt="image" src="https://github.com/user-attachments/assets/c6c48266-b415-448a-b41e-c6691e5bbbe6" />
+
 результаты сохраняются в файл:
 
-﻿﻿<img width="711" alt="image" src="https://github.com/user-attachments/assets/d78be4fb-8002-49f9-8229-45c11bb48df1" />
-
-<img width="720" alt="image" src="https://github.com/user-attachments/assets/331cb525-3233-484d-a36b-a203bb68f1eb" />
+<img width="632" alt="image" src="https://github.com/user-attachments/assets/43494da7-3934-491a-a80f-606a1f1f51cd" />
 
 Коллекции в БД:
 
-![img.png](img.png)
+
+<img width="1008" alt="image" src="https://github.com/user-attachments/assets/68185428-6e60-4fbd-be1c-7459ab943403" />
+
 
 ### Основные параметры
 
