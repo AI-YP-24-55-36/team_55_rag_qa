@@ -372,7 +372,7 @@ def print_comparison(results_without_rerank, results_with_rerank, top_k_values=[
 
 
 def visualize_results_rerank(results_without_rerank, results_with_rerank, top_k_values=[1, 3],
-                             title_prefix="Сравнение реранкинга", save_dir=f"{GRAPHS_DIR}"):
+                             title_prefix="Сравнение для гибридного поиска с реранкингом и без", save_dir=f"{GRAPHS_DIR}"):
 
     print(f"\n📊 Создание визуализаций результатов реранкинга...")
     logger.info("Создание визуализаций результатов реранкинга")
@@ -393,10 +393,41 @@ def visualize_results_rerank(results_without_rerank, results_with_rerank, top_k_
         results_with_rerank['speed']['avg_time'] * 1000
     ]
 
-    # Создаём график времени
-    plt.bar(["Без реранкинга", "С реранкингом"], speeds, color=['#1f77b4', '#2ca02c'])  # Синие и зелёные цвета
+    bar_width = 0.8 /2
+    n_groups = len(top_k_values)
+    index = np.arange(n_groups)
+    colors = plt.cm.tab10(np.linspace(0, 1, 2))
+    labels = ["Без реранкинга", "С реранкингом"]  # Подписи столбцов
+
+    # # Создаём график времени
+
+    # Построение столбчатой диаграммы
+    plt.bar(
+        index,
+        speeds,
+        bar_width,
+        color=colors,  # Цвета столбцов
+        edgecolor='black',  # Цвет границы столбцов
+        linewidth=0.5,  # Толщина границы столбцов
+    )
+
+    # Добавляем значения над столбцами
+    for i, v in enumerate(speeds):
+        if v > 0:
+            plt.text(
+                index[i],
+                v + 1,
+                f"{v:.1f}",
+                ha='center',
+                va='bottom',
+                fontsize=6,
+            )
+    # Настройка осей
+    plt.xticks(index, labels)
     plt.ylabel("Время (мс)")
-    plt.title(f"{title_prefix}: Время выполнения запроса")
+    plt.title(f"{title_prefix}: Время поиска")
+
+    # Сетка для оси Y
     plt.grid(axis='y', linestyle='--', alpha=0.7)
 
     # Сохранение графика (до plt.show())
@@ -409,17 +440,64 @@ def visualize_results_rerank(results_without_rerank, results_with_rerank, top_k_
     plt.figure(figsize=(10, 5))
     acc_before = [results_without_rerank["accuracy"]["before_rerank"][k]["accuracy"] for k in top_k_values]
     acc_after = [results_with_rerank["accuracy"]["after_rerank"][k]["accuracy"] for k in top_k_values]
-    x = np.arange(len(top_k_values))  # позиции по X
-    width = 0.1  # ширина столбцов
 
-    plt.bar(x - width / 2, acc_before, width, label="Без реранкинга", color='#1f77b4')  # Синий цвет
-    plt.bar(x + width / 2, acc_after, width, label="С реранкингом", color='#ff7f0e')  # Оранжевый цвет
-    plt.xticks(ticks=x, labels=[f"Top-{k}" for k in top_k_values])  # подписи оси X
+    # Настройки для графика
+    bar_width = 0.8 / 2
+    n_groups = len(top_k_values)
+    index = np.arange(n_groups)
+    colors = plt.cm.tab10(np.linspace(0, 1, 2))
+    labels = ["Без реранкинга", "С реранкингом"]
+
+    # Построение столбчатой диаграммы для точности
+    plt.bar(
+        index - bar_width / 2,
+        acc_before,
+        bar_width,
+        label=labels[0],
+        color=colors[0],
+        edgecolor='black',
+        linewidth=0.5,
+    )
+
+    plt.bar(
+        index + bar_width / 2,
+        acc_after,
+        bar_width,
+        label=labels[1],
+        color=colors[1],
+        edgecolor='black',
+        linewidth=0.5,
+    )
+
+    # Добавляем значения над столбцами
+    for i, (v_before, v_after) in enumerate(zip(acc_before, acc_after)):
+        if v_before > 0:
+            plt.text(
+                index[i] - bar_width / 2,
+                v_before + 0.01,
+                f"{v_before:.2f}",
+                ha='center',
+                va='bottom',
+                fontsize=6,
+            )
+        if v_after > 0:
+            plt.text(
+                index[i] + bar_width / 2,
+                v_after + 0.01,
+                f"{v_after:.2f}",
+                ha='center',
+                va='bottom',
+                fontsize=6,
+            )
+
+    # Настройка осей
+    plt.xticks(index, [f"Top-{k}" for k in top_k_values])
     plt.ylabel("Точность (Accuracy)")
     plt.title(f"{title_prefix}: Точность поиска")
+
+    # Легенда и сетка
     plt.legend()
     plt.grid(axis='y', linestyle='--', alpha=0.7)
-
     accuracy_save_path = f"{save_dir}/accuracy_comparison_{timestr}_hybrid.png"
     plt.savefig(accuracy_save_path, dpi=300, bbox_inches='tight')
     logger.info(f"График точности сохранен в {accuracy_save_path}")
