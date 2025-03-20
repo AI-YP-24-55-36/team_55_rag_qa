@@ -1,10 +1,12 @@
+import datetime
 import logging
+import sys
+import time
 from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
-import time
-import sys
-import datetime
+
 from log_output import Tee
 from load_config import load_config
 
@@ -33,7 +35,7 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 
-def visualize_results_bm25(speed_results, accuracy_results, bm25_results=None, title_prefix="Результаты бенчмарка",
+def visualize_results(speed_results, accuracy_results, bm25_results=None, title_prefix="Результаты бенчмарка",
                       save_dir=f"{GRAPHS_DIR}"):
     print(f"\n📊 Создание визуализаций результатов...")
     logger.info("Создание визуализаций результатов")

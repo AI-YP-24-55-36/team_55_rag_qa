@@ -1,11 +1,13 @@
-import logging
-from pathlib import Path
-import time
-import sys
 import datetime
+import logging
+import sys
+import time
+from pathlib import Path
+
 from tqdm import tqdm
 from fastembed import SparseTextEmbedding
 from qdrant_client import models
+
 from log_output import Tee
 from load_config import load_config
 
@@ -258,5 +260,3 @@ def benchmark_performance(client, collection_name, test_data, model, search_para
         f"✅ Оценка производительности завершена для коллекции '{collection_name}'")
 
     return results
-
-

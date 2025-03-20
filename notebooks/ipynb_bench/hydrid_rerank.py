@@ -1,6 +1,9 @@
+import datetime
 import logging
+import sys
 import time
 from pathlib import Path
+
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,6 +23,7 @@ from tqdm import tqdm
 from transformers import AutoModel, AutoTokenizer
 
 from client import parse_args
+from log_output import Tee
 from load_config import load_config
 from read_data_from_csv import read_data
 
@@ -27,14 +31,15 @@ config = load_config()
 BASE_DIR = Path(config["paths"]["base_dir"])
 LOGS_DIR = BASE_DIR / config["paths"]["logs_dir"]
 GRAPHS_DIR = BASE_DIR / config["paths"]["graphs_dir"]
+OUTPUT_DIR = BASE_DIR / config["paths"]["output_dir"]
+timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+sys.stdout = Tee(f"{OUTPUT_DIR}/log_{timestamp}.txt")
 
-# Настройка логгера для текущего модуля
-logger = logging.getLogger('client')
+logger = logging.getLogger('hybrid')
 logger.setLevel(logging.INFO)
-logger.propagate = False  # Отключаем передачу логов родительским логгерам
+logger.propagate = False
 
-# Создание обработчика для записи логов в файл
-file_handler = logging.FileHandler(f'{LOGS_DIR}/client.log')
+file_handler = logging.FileHandler(f'{LOGS_DIR}/hybrid.log')
 file_handler.setLevel(logging.INFO)
 
 # Форматирование логов
@@ -433,8 +438,6 @@ def visualize_results_rerank(results_without_rerank, results_with_rerank, top_k_
     # Сохранение графика (до plt.show())
     speed_save_path = f"{save_dir}/speed_comparison_{timestr}_hybrid.png"
     plt.savefig(speed_save_path, dpi=300, bbox_inches='tight')
-    logger.info(f"График скорости сохранен в {speed_save_path}")
-    print(f"График скорости сохранен в {speed_save_path}")
 
     # --- 2️⃣ Визуализация точности поиска ---
     plt.figure(figsize=(10, 5))
@@ -500,10 +503,14 @@ def visualize_results_rerank(results_without_rerank, results_with_rerank, top_k_
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     accuracy_save_path = f"{save_dir}/accuracy_comparison_{timestr}_hybrid.png"
     plt.savefig(accuracy_save_path, dpi=300, bbox_inches='tight')
-    logger.info(f"График точности сохранен в {accuracy_save_path}")
-    print(f"График точности сохранен в {accuracy_save_path}")
+
 
 if __name__ == "__main__":
+    # Уведомление о запуске бенчмарка
+    print("\n" + "=" * 80)
+    print("🚀 ЗАПУСК БЕНЧМАРКА RAG СИСТЕМЫ С ГИБРИДНЫМ ПОИСКОМ")
+    print("=" * 80)
+    logger.info("Запуск бенчмарка RAG системы")
 
     args = parse_args()
     args.limit = 5
@@ -548,3 +555,9 @@ if __name__ == "__main__":
 
     print_comparison(results_without_rerank, results_with_rerank)
     visualize_results_rerank(results_without_rerank, results_with_rerank)
+
+    logger.info("Бенчмарк завершен успешно")
+    print("\n" + "=" * 80)
+    print("✅ БЕНЧМАРК ЗАВЕРШЕН УСПЕШНО")
+    print(f"Графики сохранены в директории {GRAPHS_DIR}")
+    print("=" * 80)

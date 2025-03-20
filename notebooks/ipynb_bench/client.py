@@ -1,19 +1,22 @@
 import argparse
-import os
 import logging
+import os
 import time
 from pathlib import Path
+
 from tqdm import tqdm
-from qdrant_client.http.models import Distance, SearchParams, HnswConfigDiff
 from sentence_transformers import SentenceTransformer
 from fastembed import SparseTextEmbedding
 from qdrant_client import QdrantClient
-from read_data_from_csv import read_data
+from qdrant_client.http.models import Distance, SearchParams, HnswConfigDiff
 from qdrant_client import models
+
+from read_data_from_csv import read_data
 from cache_embed import generate_and_save_embeddings
 from load_config import load_config
-from viz_bm25 import visualize_results_bm25
+from visualisation import visualize_results
 from bench import benchmark_performance, benchmark_bm25
+
 
 
 config = load_config()
@@ -397,7 +400,7 @@ def main():
 
     # Визуализация результатов
     if (models_to_compare or use_bm25):
-        visualize_results_bm25(
+        visualize_results(
             speed_results=speed_results,
             accuracy_results=accuracy_results,
             bm25_results=bm25_results,
