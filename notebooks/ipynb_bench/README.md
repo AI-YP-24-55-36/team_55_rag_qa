@@ -37,8 +37,8 @@ python client.py
 ### Параметры командной строки
 
 ```bash
-python client.py --model-names all-MiniLM-L6-v2 paraphrase-multilingual-MiniLM-L12-v2 TF-IDF --limit 100
 python client.py --model-names all-MiniLM-L6-v2 paraphrase-multilingual-MiniLM-L12-v2 BM25 --limit 100
+python client.py --hybrid 1 --limit 1000
 ```
 В результате получаем два графика для одного бенча:
 
@@ -46,32 +46,32 @@ python client.py --model-names all-MiniLM-L6-v2 paraphrase-multilingual-MiniLM-L
 
 <img width="1161" alt="image" src="https://github.com/user-attachments/assets/ba30dab0-9bf6-42f9-a36d-9aa281b96f8f" />
 
-
 - сравнение по точности поиска между разными моделями конвертации текстов в эмбеддинги и методами поиска
 <img width="1165" alt="image" src="https://github.com/user-attachments/assets/29bcb58b-1f2a-479b-bbd3-44b5a90e7fe8" />
 
+- при  запуски модели с параметром `--hybrid 1` активируется гибридная модель с реранкингом, в результате получаем сравнение:
+
+﻿<img width="1398" alt="image" src="https://github.com/user-attachments/assets/c6c48266-b415-448a-b41e-c6691e5bbbe6" />
+
 результаты сохраняются в файл:
 
-﻿﻿<img width="711" alt="image" src="https://github.com/user-attachments/assets/d78be4fb-8002-49f9-8229-45c11bb48df1" />
+<img width="632" alt="image" src="https://github.com/user-attachments/assets/43494da7-3934-491a-a80f-606a1f1f51cd" />
 
-<img width="720" alt="image" src="https://github.com/user-attachments/assets/331cb525-3233-484d-a36b-a203bb68f1eb" />
-
-Колекции в БД:
-
-<img width="1695" alt="image" src="https://github.com/user-attachments/assets/c2b6097b-d177-486b-be08-653954574267" />
+Коллекции в БД:
 
 
+<img width="1008" alt="image" src="https://github.com/user-attachments/assets/68185428-6e60-4fbd-be1c-7459ab943403" />
 
 
 ### Основные параметры
 
-| Параметр | Описание | Значение по умолчанию |
-|----------|----------|------------------------|
-| `--model-names` | Список моделей для сравнения | `all-MiniLM-L6-v2 paraphrase-multilingual-MiniLM-L12-v2 TF-IDF` |
-| `--limit` | Максимальное количество записей для использования | `100` |
-| `--qdrant-host` | Хост Qdrant сервера | `localhost` |
-| `--qdrant-port` | Порт Qdrant сервера | `6333` |
-| `--collection-name` | Название коллекции в Qdrant | `rag` |
+| Параметр | Описание | Значение по умолчанию                                         |
+|----------|----------|---------------------------------------------------------------|
+| `--model-names` | Список моделей для сравнения | `all-MiniLM-L6-v2 paraphrase-multilingual-MiniLM-L12-v2 BM25` |
+| `--limit` | Максимальное количество записей для использования | `100`                                                         |
+| `--qdrant-host` | Хост Qdrant сервера | `localhost`                                                   |
+| `--qdrant-port` | Порт Qdrant сервера | `6333`                                                        |
+| `--collection-name` | Название коллекции в Qdrant | `rag`                                                         |
 
 ### Параметры HNSW
 
@@ -81,10 +81,19 @@ python client.py --model-names all-MiniLM-L6-v2 paraphrase-multilingual-MiniLM-L
 | `--hnsw-m` | Параметр m для HNSW (количество соседей) | `16` |
 | `--ef-construct` | Параметр ef_construct для HNSW | `200` |
 
+### Reranker
+
+Используется простейшее ранжирование - сортировка кандидатов
+
+`reranked_results = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)`  
+Кандидаты и их соответствующие оценки объединяются в список кортежей с помощью zip. 
+Затем этот список сортируется по оценкам (второй элемент каждого кортежа), в порядке убывания (reverse=True). 
+Это означает, что кандидаты с более высокими оценками (т.е., более релевантные) будут расположены в начале.
+
 ## Примеры использования
 
 Для запуска предустановленного пайплайна обучения набора моделей используется баш-скрипт `example.sh`,
-он позволяет запустить и сравнить сразу 5 вариантов работы модели с разной векторизацией и разными параметрами `HNSW`  
+он позволяет запустить и сравнить сразу 6 вариантов работы модели с разной векторизацией и разными параметрами `HNSW`, гибридный поиск с реранкингом и без 
 
 
 ### Сравнение конкретных моделей
@@ -93,10 +102,10 @@ python client.py --model-names all-MiniLM-L6-v2 paraphrase-multilingual-MiniLM-L
 python client.py --model-names all-MiniLM-L6-v2 paraphrase-multilingual-MiniLM-L12-v2
 ```
 
-### Только TF-IDF анализ
+### Только BM25 анализ
 
 ```bash
-python client.py --model-names TF-IDF
+python client.py --model-names BM25
 ```
 
 ### Увеличение размера тестовой выборки
@@ -125,8 +134,10 @@ python client.py --hnsw-ef 128 --hnsw-m 32 --ef-construct 400
 - `read_data_from_csv.py` - функции для чтения данных
 - `config.yml` - содержит пути к папкам для сохранения логов и картинок
 - `load_config.py` - загружает конфигурацию путей
+- `log_output.py` - сохранение результата бенчмарка в текстовый файл
 - `cache_embed.py` - кэширование эмбедингов, сохраняет в numpy и выгружает в файл, загружает из файла, если уже существует
-- `viz_bm25.py` - отрисовка графиков сравнения
+- `visualisation.py` - отрисовка графиков сравнения моделей и видов поиска
+- `hydrid_rerank.py` - создание гибридной коллекции, запуск гибридного поиска и реранкинг
 
 ## Примечания
 
@@ -136,13 +147,14 @@ python client.py --hnsw-ef 128 --hnsw-m 32 --ef-construct 400
 
 ## Выводы:
 
-1. Exact_Search работает медленнее всего
+1. Гибридный поиск с реранкингом работает медленне остальных, но точность выше
+2. Exact_Search работает медленнее HNSW
 2. Sparce вектора извлекаются быстрее, чем dense
 3. Лучшая точность у Sparce векторов (bm25) 
 4. Метод поиска в нашем случае не влияет на точность
 5. Были испробованы разные значени ef_construct - параметра качества при построении индекса, при увеличении значения, время извлечения текста увеличивается
 6. При увеличении гиперпараметра m - количество связей для каждой вершины, время извлечени контекста увеличивается
 7. Изменение гиперпараметра hnsw_ef в нашем случае не сказалось на качестве (вероятно связано со структурой датасета, он довольно подогнанный под задачу)
-8. Так как данных мало, то нужно изменять параметр indexing_threshold, чтобы запустить построение графа в HNSW
+8. Так как данных мало, то нужно изменять параметр indexing_threshold, чтобы запустить построение графа в HNSW, например:
 `optimizers_config=models.OptimizersConfigDiff(indexing_threshold=50)`
 
