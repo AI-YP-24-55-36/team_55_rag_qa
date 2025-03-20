@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 
 from tqdm import tqdm
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer, CrossEncoder
 from fastembed import SparseTextEmbedding
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, SearchParams, HnswConfigDiff
@@ -16,6 +16,7 @@ from cache_embed import generate_and_save_embeddings
 from load_config import load_config
 from visualisation import visualize_results
 from bench import benchmark_performance, benchmark_bm25
+from hydrid_rerank import upload_hybrid_data, benchmark_hybrid_rerank, reranker, print_comparison, visualize_results_rerank
 
 
 
@@ -73,6 +74,9 @@ def parse_args():
                         help='Параметр m для HNSW (количество соседей)')
     parser.add_argument('--ef-construct', type=int, default=200,
                         help='Параметр ef_construct для HNSW')
+
+    parser.add_argument('--hybrid', type=int, default=0,
+                        help='Параметр для запуска гибридного поиска')
 
     return parser.parse_args()
 
@@ -224,7 +228,6 @@ def upload_data(client, collection_name, data, model, batch_size=100):
 
 def main():
     args = parse_args()
-
     # Уведомление о запуске бенчмарка
     print("\n" + "="*80)
     print("🚀 ЗАПУСК БЕНЧМАРКА RAG СИСТЕМЫ")
@@ -242,177 +245,224 @@ def main():
     logger.info(f"Загружено {len(data_for_db)} документов")
     print(f"✅ Загружено {len(data_for_db)} документов")
 
-    # Получаем список моделей из аргументов командной строки
-    all_models = args.model_names
-    logger.info(f"Выбранные модели для сравнения: {', '.join(all_models)}")
-    print(f"🔄 Выбранные модели для сравнения: {', '.join(all_models)}")
+    hybrid = args.hybrid
 
-    # Разделяем модели на обычные и TF-IDF
-    # models_to_compare = [model for model in all_models if model != 'BM25']
-    models_to_compare = [model for model in all_models if model not in ['BM25', 'TF-IDF']]
-    use_bm25 = 'BM25' in all_models
+    if hybrid == 0:
 
-    # Инициализация моделей
-    model_instances = {}
-    if models_to_compare:
-        print(f"🔄 Инициализация моделей для dense векторов...")
-        progress_bar = tqdm(total=len(models_to_compare),
-                            desc="Загрузка моделей", unit="модель")
+        # Получаем список моделей из аргументов командной строки
+        all_models = args.model_names
+        logger.info(f"Выбранные модели для сравнения: {', '.join(all_models)}")
+        print(f"🔄 Выбранные модели для сравнения: {', '.join(all_models)}")
 
-        for model_name in models_to_compare.copy():
-            try:
-                logger.info(f"Инициализация модели: {model_name}")
-                # Инициализируем модель SentenceTransformer
-                model_instances[model_name] = SentenceTransformer(model_name)
-                logger.info(f"Модель {model_name} инициализирована")
-                progress_bar.update(1)
-            except Exception as e:
-                logger.error(
-                    f"Ошибка при инициализации модели {model_name}: {e}")
-                models_to_compare.remove(model_name)
+        # Разделяем модели на обычные и BM25
+        models_to_compare = [model for model in all_models if model != 'BM25']
+        use_bm25 = 'BM25' in all_models
 
-        progress_bar.close()
-        print(f"✅ Модели инициализированы: {', '.join(models_to_compare)}")
+        # Инициализация моделей
+        model_instances = {}
+        if models_to_compare:
+            print(f"🔄 Инициализация моделей для dense векторов...")
+            progress_bar = tqdm(total=len(models_to_compare),
+                                desc="Загрузка моделей", unit="модель")
+
+            for model_name in models_to_compare.copy():
+                try:
+                    logger.info(f"Инициализация модели: {model_name}")
+                    # Инициализируем модель SentenceTransformer
+                    model_instances[model_name] = SentenceTransformer(model_name)
+                    logger.info(f"Модель {model_name} инициализирована")
+                    progress_bar.update(1)
+                except Exception as e:
+                    logger.error(
+                        f"Ошибка при инициализации модели {model_name}: {e}")
+                    models_to_compare.remove(model_name)
+
+            progress_bar.close()
+            print(f"✅ Модели инициализированы: {', '.join(models_to_compare)}")
 
 
-    # Определение алгоритмов поиска для dense векторов
-    search_algorithms = {
-        "Exact Search": SearchParams(exact=True),
-        f"HNSW Users ef={args.hnsw_ef}": SearchParams(hnsw_ef=args.hnsw_ef),
-        "HNSW High Precision ef=512": SearchParams(hnsw_ef=512)
-    }
+        # Определение алгоритмов поиска для dense векторов
+        search_algorithms = {
+            "Exact Search": SearchParams(exact=True),
+            f"HNSW Users ef={args.hnsw_ef}": SearchParams(hnsw_ef=args.hnsw_ef),
+            "HNSW High Precision ef=512": SearchParams(hnsw_ef=512)
+        }
 
-    # Результаты бенчмарка для dense векторов
-    speed_results = {}
-    accuracy_results = {}
+        # Результаты бенчмарка для dense векторов
+        speed_results = {}
+        accuracy_results = {}
 
-    # Запуск бенчмарка для каждой модели с dense векторами
-    if models_to_compare:
-        for model_name in models_to_compare:
-            model = model_instances[model_name]
+        # Запуск бенчмарка для каждой модели с dense векторами
+        if models_to_compare:
+            for model_name in models_to_compare:
+                model = model_instances[model_name]
 
-            # Создание коллекции
-            collection_name = f"{args.collection_name}_{model_name.replace('-', '_')}"
-            create_collection(client, collection_name, args.vector_size)
+                # Создание коллекции
+                collection_name = f"{args.collection_name}_{model_name.replace('-', '_')}"
+                create_collection(client, collection_name, args.vector_size)
 
-            # Загрузка данных
-            upload_data(client, collection_name,
-                        data_for_db, model, args.batch_size)
+                # Загрузка данных
+                upload_data(client, collection_name,
+                            data_for_db, model, args.batch_size)
 
-            # Результаты для текущей модели
-            speed_results[model_name] = {}
-            accuracy_results[model_name] = {}
+                # Результаты для текущей модели
+                speed_results[model_name] = {}
+                accuracy_results[model_name] = {}
 
-            # Оценка для каждого алгоритма
-            for algo_name, search_params in search_algorithms.items():
-                logger.info(
-                    f"Оценка алгоритма {algo_name} с моделью {model_name}")
-                print(
-                    f"\n🔍 Оценка алгоритма {algo_name} с моделью {model_name}")
+                # Оценка для каждого алгоритма
+                for algo_name, search_params in search_algorithms.items():
+                    logger.info(
+                        f"Оценка алгоритма {algo_name} с моделью {model_name}")
+                    print(
+                        f"\n🔍 Оценка алгоритма {algo_name} с моделью {model_name}")
 
-                # Обновление параметров HNSW
-                if algo_name.startswith("HNSW"):
-                    client.update_collection(
-                        collection_name=collection_name,
-                        optimizers_config=models.OptimizersConfigDiff(indexing_threshold=50, default_segment_number=5),
-                        hnsw_config=HnswConfigDiff(
-                            m=args.hnsw_m,
-                            ef_construct=args.ef_construct,
+                    # Обновление параметров HNSW
+                    if algo_name.startswith("HNSW"):
+                        client.update_collection(
+                            collection_name=collection_name,
+                            optimizers_config=models.OptimizersConfigDiff(indexing_threshold=90, default_segment_number=5),
+                            hnsw_config=HnswConfigDiff(
+                                m=args.hnsw_m,
+                                ef_construct=args.ef_construct,
+                            )
                         )
+
+                    # Запуск объединенной функции оценки производительности
+                    benchmark_results = benchmark_performance(
+                        client=client,
+                        collection_name=collection_name,
+                        test_data=data_df,
+                        model=model,
+                        search_params=search_params,
+                        top_k_values=[1, 3]
                     )
 
-                # Запуск объединенной функции оценки производительности
-                benchmark_results = benchmark_performance(
+                    # Сохраняем результаты скорости
+                    speed_results[model_name][algo_name] = benchmark_results["speed"]
+
+                    # Сохраняем результаты точности
+                    accuracy_results[model_name][algo_name] = benchmark_results["accuracy"]
+        # Запуск бенчмарка для BM25, если он выбран
+        bm25_results = None
+        if use_bm25:
+            print("\n" + "=" * 80)
+            print("🔍 ОЦЕНКА ПРОИЗВОДИТЕЛЬНОСТИ BM25")
+            print("=" * 80)
+            logger.info("Запуск оценки производительности BM25")
+
+            # Создание коллекции для BM25
+            bm25_collection_name = f"{args.collection_name}_bm25"
+
+            # Загрузка данных BM25
+            upload_bm25_data(client, bm25_collection_name, data_for_db)
+
+            # Результаты для BM25
+            bm25_speed_results = {}
+            bm25_accuracy_results = {}
+
+            # Оценка для каждого алгоритма поиска
+            for algo_name, search_params in search_algorithms.items():
+                logger.info(f"Оценка алгоритма {algo_name} с моделью BM25")
+                print(f"\n🔍 Оценка алгоритма {algo_name} с моделью BM25")
+
+                # Запуск бенчмарка для BM25 с текущими параметрами поиска
+                benchmark_results = benchmark_bm25(
                     client=client,
-                    collection_name=collection_name,
+                    collection_name=bm25_collection_name,
                     test_data=data_df,
-                    model=model,
                     search_params=search_params,
                     top_k_values=[1, 3]
                 )
 
                 # Сохраняем результаты скорости
-                speed_results[model_name][algo_name] = benchmark_results["speed"]
+                bm25_speed_results[algo_name] = benchmark_results["speed"]
 
                 # Сохраняем результаты точности
-                accuracy_results[model_name][algo_name] = benchmark_results["accuracy"]
-    # Запуск бенчмарка для BM25, если он выбран
-    bm25_results = None
-    if use_bm25:
-        print("\n" + "=" * 80)
-        print("🔍 ОЦЕНКА ПРОИЗВОДИТЕЛЬНОСТИ BM25")
-        print("=" * 80)
-        logger.info("Запуск оценки производительности BM25")
+                bm25_accuracy_results[algo_name] = benchmark_results["accuracy"]
 
-        # Создание коллекции для BM25
-        bm25_collection_name = f"{args.collection_name}_bm25"
+            # Сохраняем результаты BM25 для визуализации
+            bm25_results = {
+                "speed": bm25_speed_results,
+                "accuracy": bm25_accuracy_results
+            }
 
-        # Загрузка данных BM25
-        upload_bm25_data(client, bm25_collection_name, data_for_db)
+            # Вывод результатов скорости
+            print("\n" + "=" * 80)
+            print("РЕЗУЛЬТАТЫ ОЦЕНКИ СКОРОСТИ ПОИСКА")
+            print("=" * 80)
 
-        # Результаты для BM25
-        bm25_speed_results = {}
-        bm25_accuracy_results = {}
 
-        # Оценка для каждого алгоритма поиска
-        for algo_name, search_params in search_algorithms.items():
-            logger.info(f"Оценка алгоритма {algo_name} с моделью BM25")
-            print(f"\n🔍 Оценка алгоритма {algo_name} с моделью BM25")
+        # Вывод результатов для BM25
+        if use_bm25 and bm25_results:
+            print(f"\nМодель: BM25")
 
-            # Запуск бенчмарка для BM25 с текущими параметрами поиска
-            benchmark_results = benchmark_bm25(
-                client=client,
-                collection_name=bm25_collection_name,
-                test_data=data_df,
-                search_params=search_params,
-                top_k_values=[1, 3]
+            for algo_name, accuracy_data in bm25_results["accuracy"].items():
+                print(f"  Алгоритм: {algo_name}")
+
+                for k in [1, 3]:
+                    if k in accuracy_data:
+                        result = accuracy_data[k]
+                        print(f"    Top-{k}: Точность = {result['accuracy']:.4f} ({result['correct']}/{result['total']})")
+
+        # Визуализация результатов
+        if (models_to_compare or use_bm25):
+            visualize_results(
+                speed_results=speed_results,
+                accuracy_results=accuracy_results,
+                bm25_results=bm25_results,
+                title_prefix="Сравнение производительности RAG системы",
+                save_dir=f"{GRAPHS_DIR}"
             )
-
-            # Сохраняем результаты скорости
-            bm25_speed_results[algo_name] = benchmark_results["speed"]
-
-            # Сохраняем результаты точности
-            bm25_accuracy_results[algo_name] = benchmark_results["accuracy"]
-
-        # Сохраняем результаты BM25 для визуализации
-        bm25_results = {
-            "speed": bm25_speed_results,
-            "accuracy": bm25_accuracy_results
-        }
-
-        # Вывод результатов скорости
+        #
+        logger.info("Бенчмарк завершен успешно")
         print("\n" + "=" * 80)
-        print("РЕЗУЛЬТАТЫ ОЦЕНКИ СКОРОСТИ ПОИСКА")
+        print("✅ БЕНЧМАРК ЗАВЕРШЕН УСПЕШНО")
+        print(f"Графики сохранены в директории {GRAPHS_DIR}")
         print("=" * 80)
 
+    else:
 
-    # Вывод результатов для BM25
-    if use_bm25 and bm25_results:
-        print(f"\nМодель: BM25")
+        # Уведомление о запуске бенчмарка
+        print("\n" + "=" * 80)
+        print("🚀 ЗАПУСК БЕНЧМАРКА RAG СИСТЕМЫ С ГИБРИДНЫМ ПОИСКОМ")
+        print("=" * 80)
+        logger.info("Запуск бенчмарка RAG системы")
 
-        for algo_name, accuracy_data in bm25_results["accuracy"].items():
-            print(f"  Алгоритм: {algo_name}")
+        args = parse_args()
+        data_for_db, data_df = read_data(limit=args.limit)
+        client = QdrantClient(host=args.qdrant_host, port=args.qdrant_port)
 
-            for k in [1, 3]:
-                if k in accuracy_data:
-                    result = accuracy_data[k]
-                    print(f"    Top-{k}: Точность = {result['accuracy']:.4f} ({result['correct']}/{result['total']})")
-
-    # Визуализация результатов
-    if (models_to_compare or use_bm25):
-        visualize_results(
-            speed_results=speed_results,
-            accuracy_results=accuracy_results,
-            bm25_results=bm25_results,
-            title_prefix="Сравнение производительности RAG системы",
-            save_dir=f"{GRAPHS_DIR}"
+        # Загрузка данных
+        upload_hybrid_data(
+            client=client,
+            collection_name="hybrid_collection",
+            data=data_for_db
         )
-    #
-    logger.info("Бенчмарк завершен успешно")
-    print("\n" + "=" * 80)
-    print("✅ БЕНЧМАРК ЗАВЕРШЕН УСПЕШНО")
-    print(f"Графики сохранены в директории {GRAPHS_DIR}")
-    print("=" * 80)
+
+        results_without_rerank = benchmark_hybrid_rerank(
+            client=client,
+            collection_name="hybrid_collection",
+            test_data=data_df,
+            reranker=None
+        )
+
+
+        # Запускаем бенчмарк с реранкингом
+        results_with_rerank = benchmark_hybrid_rerank(
+            client=client,
+            collection_name="hybrid_collection",
+            test_data=data_df,
+            reranker=reranker  # Передаем функцию реранкинга
+        )
+
+        print_comparison(results_without_rerank, results_with_rerank)
+        visualize_results_rerank(results_without_rerank, results_with_rerank)
+
+        logger.info("Бенчмарк завершен успешно")
+        print("\n" + "=" * 80)
+        print("✅ БЕНЧМАРК ЗАВЕРШЕН УСПЕШНО")
+        print(f"Графики сохранены в директории {GRAPHS_DIR}")
+        print("=" * 80)
 
 
 if __name__ == "__main__":

@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from fastembed import SparseTextEmbedding
-from qdrant_client import QdrantClient, models
+from sentence_transformers import CrossEncoder
+from qdrant_client import models
 from qdrant_client.models import (
     Distance,
     Modifier,
@@ -18,14 +19,12 @@ from qdrant_client.models import (
     SparseVectorParams,
     VectorParams,
 )
-from sentence_transformers import CrossEncoder, SentenceTransformer
+from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 from transformers import AutoModel, AutoTokenizer
 
-from client import parse_args
 from log_output import Tee
 from load_config import load_config
-from read_data_from_csv import read_data
 
 config = load_config()
 BASE_DIR = Path(config["paths"]["base_dir"])
@@ -48,6 +47,9 @@ file_handler.setFormatter(formatter)
 
 # Добавление обработчиков к логгеру
 logger.addHandler(file_handler)
+
+# Загружаем модель для реранкинга
+reranker_model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
 def upload_hybrid_data(client, collection_name: str, data):
     """Загрузка данных в Qdrant с поддержкой гибридного поиска (BM25 + Dense + ColBERT)"""
@@ -179,14 +181,7 @@ def upload_hybrid_data(client, collection_name: str, data):
         raise
 
 
-def benchmark_hybrid_rerank(client, collection_name, test_data, model, search_params=None, top_k_values=[1, 3],
-                            bm25_weight=0.3,
-                            dense_weight=0.4,
-                            colbert_weight=0.3,
-                            reranker = None
-                            ):
-    """Бенчмарк производительности Hybrid Search + Rerank в Qdrant с использованием prefetch"""
-
+def benchmark_hybrid_rerank(client, collection_name, test_data, top_k_values=[1, 3], reranker=None):
     print(f"\n🔍 Запуск оценки производительности Гибридного Поиска + Реранка для коллекции '{collection_name}'")
     logger.info(f"Запуск оценки производительности Гибридного Поиска + Реранка для коллекции '{collection_name}'")
 
@@ -314,7 +309,6 @@ def benchmark_hybrid_rerank(client, collection_name, test_data, model, search_pa
                 if true_context in found_contexts_r[:k]:
                     results["accuracy"]["after_rerank"][k]["correct"] += 1
 
-
         progress_bar.update(1)
 
     progress_bar.close()
@@ -347,7 +341,7 @@ def benchmark_hybrid_rerank(client, collection_name, test_data, model, search_pa
 
     return results
 
-def simple_reranker(query, candidates):
+def reranker(query, candidates):
 
     texts = [(query, context) for context, _ in candidates]
     scores = reranker_model.predict(texts)
@@ -504,60 +498,60 @@ def visualize_results_rerank(results_without_rerank, results_with_rerank, top_k_
     accuracy_save_path = f"{save_dir}/accuracy_comparison_{timestr}_hybrid.png"
     plt.savefig(accuracy_save_path, dpi=300, bbox_inches='tight')
 
-
-if __name__ == "__main__":
-    # Уведомление о запуске бенчмарка
-    print("\n" + "=" * 80)
-    print("🚀 ЗАПУСК БЕНЧМАРКА RAG СИСТЕМЫ С ГИБРИДНЫМ ПОИСКОМ")
-    print("=" * 80)
-    logger.info("Запуск бенчмарка RAG системы")
-
-    args = parse_args()
-    args.limit = 5
-
-    data_for_db, data_df = read_data(limit=args.limit)
-    client = QdrantClient(host=args.qdrant_host, port=args.qdrant_port)
-
-        # Загрузка данных
-    upload_hybrid_data(
-        client=client,
-        collection_name="hybrid_collection",
-        data=data_for_db
-    )
-
-    all_models = args.model_names
-    results_without_rerank = benchmark_hybrid_rerank(
-        client=client,
-        collection_name="hybrid_collection",
-        test_data=data_df,
-        model=all_models[0],
-        search_params={"exact": False, "hnsw_ef": 128},
-        top_k_values=[1, 3, 5],
-        bm25_weight=0.3,
-        dense_weight=0.4,
-        colbert_weight=0.3,
-        reranker=None
-    )
-
-
-    # Загружаем модель для реранкинга
-    reranker_model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
-
-    # Запускаем бенчмарк с реранкингом
-    results_with_rerank = benchmark_hybrid_rerank(
-        client=client,
-        collection_name="hybrid_collection",
-        test_data=data_df,
-        model=None,
-        reranker=simple_reranker  # Передаем функцию реранкинга
-    )
-
-
-    print_comparison(results_without_rerank, results_with_rerank)
-    visualize_results_rerank(results_without_rerank, results_with_rerank)
-
-    logger.info("Бенчмарк завершен успешно")
-    print("\n" + "=" * 80)
-    print("✅ БЕНЧМАРК ЗАВЕРШЕН УСПЕШНО")
-    print(f"Графики сохранены в директории {GRAPHS_DIR}")
-    print("=" * 80)
+#
+# if __name__ == "__main__":
+#     # Уведомление о запуске бенчмарка
+#     print("\n" + "=" * 80)
+#     print("🚀 ЗАПУСК БЕНЧМАРКА RAG СИСТЕМЫ С ГИБРИДНЫМ ПОИСКОМ")
+#     print("=" * 80)
+#     logger.info("Запуск бенчмарка RAG системы")
+#
+#     args = parse_args()
+#     args.limit = 5
+#
+#     data_for_db, data_df = read_data(limit=args.limit)
+#     client = QdrantClient(host=args.qdrant_host, port=args.qdrant_port)
+#
+#         # Загрузка данных
+#     upload_hybrid_data(
+#         client=client,
+#         collection_name="hybrid_collection",
+#         data=data_for_db
+#     )
+#
+#     all_models = args.model_names
+#     results_without_rerank = benchmark_hybrid_rerank(
+#         client=client,
+#         collection_name="hybrid_collection",
+#         test_data=data_df,
+#         model=all_models[0],
+#         search_params={"exact": False, "hnsw_ef": 128},
+#         top_k_values=[1, 3, 5],
+#         bm25_weight=0.3,
+#         dense_weight=0.4,
+#         colbert_weight=0.3,
+#         reranker=None
+#     )
+#
+#
+#     # Загружаем модель для реранкинга
+#
+#
+#     # Запускаем бенчмарк с реранкингом
+#     results_with_rerank = benchmark_hybrid_rerank(
+#         client=client,
+#         collection_name="hybrid_collection",
+#         test_data=data_df,
+#         model=None,
+#         reranker=simple_reranker  # Передаем функцию реранкинга
+#     )
+#
+#
+#     print_comparison(results_without_rerank, results_with_rerank)
+#     visualize_results_rerank(results_without_rerank, results_with_rerank)
+#
+#     logger.info("Бенчмарк завершен успешно")
+#     print("\n" + "=" * 80)
+#     print("✅ БЕНЧМАРК ЗАВЕРШЕН УСПЕШНО")
+#     print(f"Графики сохранены в директории {GRAPHS_DIR}")
+#     print("=" * 80)
