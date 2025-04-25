@@ -3,6 +3,7 @@ import logging
 import sys
 import time
 from pathlib import Path
+import pickle
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,6 +29,7 @@ BASE_DIR = Path(config["paths"]["base_dir"])
 LOGS_DIR = BASE_DIR / config["paths"]["logs_dir"]
 GRAPHS_DIR = BASE_DIR / config["paths"]["graphs_dir"]
 OUTPUT_DIR = BASE_DIR / config["paths"]["output_dir"]
+EMBEDDINGS_DIR = BASE_DIR / config["paths"]["embeddings_dir"]
 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 sys.stdout = Tee(f"{OUTPUT_DIR}/log_{timestamp}.txt")
 
@@ -87,8 +89,14 @@ def load_embedding_models():
     colbert_model = LateInteractionTextEmbedding("colbert-ir/colbertv2.0")
     return bm25_model, dense_model, colbert_model
 
+
 #  создание поинтов
 def build_point(item, bm25_model, dense_model, colbert_model):
+    dense_embeddings = np.memmap('embeddings/dense_embeddings.memmap', dtype='float32', mode='r')
+    colbert_embeddings = np.memmap('embeddings/colbert_embeddings.memmap', dtype='float32', mode='r')
+    with open('embeddings/sparse_embeddings.pkl', 'rb') as f:
+        sparse_embeddings = pickle.load(f)
+
     text = item["context"]
     # BM25 sparse vector
     sparse_vector = list(bm25_model.query_embed(text))
@@ -150,7 +158,6 @@ def load_embedding():
 def encode_query(query_text, models):
     sparse_vector = list(models["bm25"].query_embed(query_text))
     sparse_embedding = sparse_vector[0] if sparse_vector else None
-
     dense_embedding = models["dense"].encode(query_text).tolist()
     colbert_embedding = list(models["colbert"].embed(query_text))[0]
 
