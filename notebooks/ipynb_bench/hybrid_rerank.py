@@ -77,8 +77,8 @@ def create_hybrid_collection(client, collection_name):
             )
         }
     )
-    logger.info(f"Создана коллекция {collection_name} с гибридными векторами")
-    print(f"Создана коллекция {collection_name} с гибридными векторами")
+    logger.info(f"Создана коллекция {collection_name}, готова к заполнению")
+    print(f"Создана коллекция {collection_name}, готова к заполнению")
 
 #  загрузка эмбеддингов моделей
 def load_embedding_models():
@@ -90,14 +90,11 @@ def load_embedding_models():
 #  создание поинтов
 def build_point(item, bm25_model, dense_model, colbert_model):
     text = item["context"]
-
     # BM25 sparse vector
     sparse_vector = list(bm25_model.query_embed(text))
     sparse_embedding = sparse_vector[0] if sparse_vector else None
-
     # Dense vector
     dense_embedding = dense_model.encode(text).tolist()
-
     # ColBERT vector
     colbert_embedding = list(colbert_model.embed(text))[0]
 
@@ -114,38 +111,32 @@ def build_point(item, bm25_model, dense_model, colbert_model):
         }
     )
 # загрузка поинтов батчами
-def upload_points_in_batches(client, collection_name, points, batch_size=50):
+def upload_points_in_batches(client, collection_name, points, batch_size=10):
     for i in range(0, len(points), batch_size):
         batch = points[i:i + batch_size]
         client.upload_points(
             collection_name=collection_name,
-            points=batch
+            points=batch,
         )
         print(f"Загружено {i + len(batch)} из {len(points)} документов")
 
 # создание и загрузка коллекции
 def upload_hybrid_data(client, collection_name: str, data):
     """Загрузка данных в Qdrant с поддержкой гибридного поиска (BM25 + Dense + ColBERT)"""
-
     logger.info(f"Загрузка {len(data)} документов в коллекцию {collection_name} с гибридным поиском")
-
     clear_existing_collections(client)
     create_hybrid_collection(client, collection_name)
-
     bm25_model, dense_model, colbert_model = load_embedding_models()
-
+    logger.info(f"⏳ Создание точек загрузки {collection_name}")
+    print(f"⏳ Создание точек загрузки  {collection_name}")
     points = []
     for item in tqdm(data):
         point = build_point(item, bm25_model, dense_model, colbert_model)
         points.append(point)
-
     print(f"Создано {len(points)} points")
-
     upload_points_in_batches(client, collection_name, points)
-
     logger.info(f"✅ Данные успешно загружены в коллекцию {collection_name}")
     print(f"✅ Данные успешно загружены в коллекцию {collection_name}")
-
 
 
 def load_embedding():
@@ -194,14 +185,6 @@ def run_hybrid_search(client, collection_name, sparse_embedding, dense_embedding
     found_contexts = [(point.payload.get('context', ''), point.score) for point in search_results.points]
 
     return found_contexts, query_time
-
-
-# def evaluate_accuracy(found_contexts, true_context, top_k_values, results, stage):
-#     for k in top_k_values:
-#         results["accuracy"][stage][k]["total"] += 1
-#         top_k_contexts = [ctx for ctx, _ in found_contexts[:k]]
-#         if true_context in top_k_contexts:
-#             results["accuracy"][stage][k]["correct"] += 1
 
 def evaluate_accuracy(found_contexts, true_context, top_k_values, results, stage):
     if not found_contexts:
