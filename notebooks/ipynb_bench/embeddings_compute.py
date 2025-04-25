@@ -1,7 +1,8 @@
 import numpy as np
 from tqdm import tqdm
-from sentence_transformers import SentenceTransformer
+# from sentence_transformers import SentenceTransformer
 from fastembed import SparseTextEmbedding, LateInteractionTextEmbedding
+from beir.retrieval.models import SentenceBERT
 import logging
 from pathlib import Path
 import pickle
@@ -29,7 +30,7 @@ logger.addHandler(file_handler)
 
 def load_embedding_models():
     bm25_model = SparseTextEmbedding("Qdrant/bm25")
-    dense_model = SentenceTransformer('all-MiniLM-L6-v2')
+    dense_model = SentenceBERT("msmarco-distilbert-base-tas-b")
     colbert_model = LateInteractionTextEmbedding("colbert-ir/colbertv2.0")
     return bm25_model, dense_model, colbert_model
 
@@ -42,7 +43,8 @@ def build_embeddings(item, bm25_model, dense_model, colbert_model):
     sparse_vector = list(bm25_model.query_embed(text))
     sparse_embedding = sparse_vector[0] if sparse_vector else None
     # Dense vector
-    dense_embedding = dense_model.encode(text).tolist()
+    # dense_embedding = dense_model.encode(text).tolist()
+    dense_embedding = dense_model.encode_corpus([{"text": text}], convert_to_tensor=False)[0]
     # ColBERT vector
     colbert_embedding = list(colbert_model.embed(text))[0]
 
@@ -50,7 +52,7 @@ def build_embeddings(item, bm25_model, dense_model, colbert_model):
 
 def generate_emb():
     sparce, dense, colbert = [], [], []
-    data_for_db, data_df = read_data(limit=300)
+    data_for_db, data_df = read_data(limit=-1)
 
     for item in tqdm(data_for_db):
         sparse_embedding, dense_embedding, colbert_embedding = build_embeddings(item, bm25_model, dense_model, colbert_model)

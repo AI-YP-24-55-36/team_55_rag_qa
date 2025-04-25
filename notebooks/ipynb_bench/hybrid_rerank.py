@@ -8,6 +8,7 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 from fastembed import SparseTextEmbedding, LateInteractionTextEmbedding
+from beir.retrieval.models import SentenceBERT
 from sentence_transformers import CrossEncoder
 from qdrant_client import models
 from qdrant_client.models import (
@@ -18,7 +19,6 @@ from qdrant_client.models import (
     SparseVectorParams,
     VectorParams
 )
-from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
 from log_output import Tee
@@ -63,7 +63,7 @@ def create_hybrid_collection(client, collection_name):
         collection_name=collection_name,
         vectors_config={
             "dense": VectorParams(
-                size=384,
+                size=768,
                 distance=Distance.COSINE
             ),
             "colbertv2.0": VectorParams(
@@ -85,26 +85,29 @@ def create_hybrid_collection(client, collection_name):
 #  загрузка эмбеддингов моделей
 def load_embedding_models():
     bm25_model = SparseTextEmbedding("Qdrant/bm25")
-    dense_model = SentenceTransformer('all-MiniLM-L6-v2')
+    # dense_model = SentenceTransformer('all-MiniLM-L6-v2')
+    dense_model = SentenceBERT("msmarco-distilbert-base-tas-b")
     colbert_model = LateInteractionTextEmbedding("colbert-ir/colbertv2.0")
     return bm25_model, dense_model, colbert_model
 
 
-#  создание поинтов
-def build_point(item, bm25_model, dense_model, colbert_model):
-    dense_embeddings = np.memmap('embeddings/dense_embeddings.memmap', dtype='float32', mode='r')
-    colbert_embeddings = np.memmap('embeddings/colbert_embeddings.memmap', dtype='float32', mode='r')
-    with open('embeddings/sparse_embeddings.pkl', 'rb') as f:
-        sparse_embeddings = pickle.load(f)
+dense_embeddings = np.memmap('embeddings/dense_embeddings.memmap', dtype='float32', mode='r').reshape(-1, 768)
+colbert_embeddings = np.memmap('embeddings/colbert_embeddings.memmap', dtype='float32', mode='r').reshape(-1, 1024, 128)
 
-    text = item["context"]
-    # BM25 sparse vector
-    sparse_vector = list(bm25_model.query_embed(text))
-    sparse_embedding = sparse_vector[0] if sparse_vector else None
-    # Dense vector
-    dense_embedding = dense_model.encode(text).tolist()
-    # ColBERT vector
-    colbert_embedding = list(colbert_model.embed(text))[0]
+with open('embeddings/sparse_embeddings.pkl', 'rb') as f:
+    sparse_embeddings = pickle.load(f)
+
+def build_point_from_files(
+    item,
+    idx,
+    sparse_embeddings,
+    dense_embeddings,
+    colbert_embeddings
+):
+    # Получаем эмбеддинги по индексу
+    sparse_embedding = sparse_embeddings[idx]
+    dense_embedding = dense_embeddings[idx].tolist()
+    colbert_embedding = colbert_embeddings[idx].tolist()
 
     return models.PointStruct(
         id=item["id"],
@@ -118,6 +121,7 @@ def build_point(item, bm25_model, dense_model, colbert_model):
             "colbertv2.0": colbert_embedding
         }
     )
+
 # загрузка поинтов батчами
 def upload_points_in_batches(client, collection_name, points, batch_size=10):
     for i in range(0, len(points), batch_size):
@@ -138,8 +142,8 @@ def upload_hybrid_data(client, collection_name: str, data):
     logger.info(f"⏳ Создание точек загрузки {collection_name}")
     print(f"⏳ Создание точек загрузки  {collection_name}")
     points = []
-    for item in tqdm(data):
-        point = build_point(item, bm25_model, dense_model, colbert_model)
+    for idx, item in tqdm(enumerate(data)):
+        point = build_point_from_files(item, idx, sparse_embeddings, dense_embeddings, colbert_embeddings)
         points.append(point)
     print(f"Создано {len(points)} points")
     upload_points_in_batches(client, collection_name, points)
@@ -150,7 +154,7 @@ def upload_hybrid_data(client, collection_name: str, data):
 def load_embedding():
     return {
         "bm25": SparseTextEmbedding("Qdrant/bm25"),
-        "dense": SentenceTransformer('all-MiniLM-L6-v2'),
+        "dense": SentenceBERT("msmarco-distilbert-base-tas-b"),
         "colbert": LateInteractionTextEmbedding("colbert-ir/colbertv2.0")
     }
 
@@ -158,7 +162,8 @@ def load_embedding():
 def encode_query(query_text, models):
     sparse_vector = list(models["bm25"].query_embed(query_text))
     sparse_embedding = sparse_vector[0] if sparse_vector else None
-    dense_embedding = models["dense"].encode(query_text).tolist()
+    # dense_embedding = models["dense"].encode(query_text).tolist()
+    dense_embedding = models["dense"].encode_corpus([{"text": query_text}], convert_to_tensor=False)[0]
     colbert_embedding = list(models["colbert"].embed(query_text))[0]
 
     return sparse_embedding, dense_embedding, colbert_embedding
