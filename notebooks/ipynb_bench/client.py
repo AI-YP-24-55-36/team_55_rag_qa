@@ -16,7 +16,7 @@ from cache_embed import generate_and_save_embeddings
 from load_config import load_config
 from visualisation import visualize_results
 from bench import benchmark_performance, benchmark_bm25
-from hydrid_rerank import upload_hybrid_data, benchmark_hybrid_rerank, reranker, print_comparison, visualize_results_rerank
+from hybrid_rerank import upload_hybrid_data, benchmark_hybrid_rerank, reranker, print_comparison, visualize_results_rerank
 
 
 
@@ -133,11 +133,7 @@ def upload_bm25_data(client, collection_name, data):
         }
     )
 
-
-
     logger.info(f"Коллекция {collection_name} создана с поддержкой BM25")
-
-
 
     # Подготавливаем данные для загрузки
     bm25_embedding_model = SparseTextEmbedding("Qdrant/bm25")
