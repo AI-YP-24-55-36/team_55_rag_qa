@@ -1,6 +1,5 @@
 import numpy as np
 from tqdm import tqdm
-# from sentence_transformers import SentenceTransformer
 from fastembed import SparseTextEmbedding, LateInteractionTextEmbedding
 from beir.retrieval.models import SentenceBERT
 import logging
@@ -14,7 +13,6 @@ config = load_config()
 BASE_DIR = Path(config["paths"]["base_dir"])
 LOGS_DIR = BASE_DIR / config["paths"]["logs_dir"]
 EMBEDDINGS_DIR = BASE_DIR / config["paths"]["embeddings_dir"]
-
 
 logger = logging.getLogger('embed')
 logger.setLevel(logging.INFO)
@@ -52,7 +50,7 @@ def build_embeddings(item, bm25_model, dense_model, colbert_model):
 
 def generate_emb():
     sparce, dense, colbert = [], [], []
-    data_for_db, data_df = read_data(limit=-1)
+    data_for_db, data_df = read_data(limit=10)
 
     for item in tqdm(data_for_db):
         sparse_embedding, dense_embedding, colbert_embedding = build_embeddings(item, bm25_model, dense_model, colbert_model)
@@ -62,7 +60,7 @@ def generate_emb():
 
     return sparce, dense, colbert
 
-def pad_to_fixed_length(matrix, target_len=1024):
+def pad_to_fixed_length(matrix, target_len=512):
     current_len = matrix.shape[0]
     dim = matrix.shape[1]
 
@@ -80,7 +78,7 @@ def memmap_emb(
     dense_output_path=f'{EMBEDDINGS_DIR}/dense_embeddings.memmap',
     colbert_output_path=f'{EMBEDDINGS_DIR}/colbert_embeddings.memmap',
     sparse_output_path=f'{EMBEDDINGS_DIR}/sparse_embeddings.pkl',
-    colbert_tokens=1024,  # фиксированное количество токенов
+    colbert_tokens=256,  # фиксированное количество токенов
     dtype='float32'
 ):
     # Получаем эмбеддинги

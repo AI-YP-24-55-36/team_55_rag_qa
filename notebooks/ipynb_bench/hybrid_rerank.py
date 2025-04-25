@@ -123,7 +123,7 @@ def build_point_from_files(
     )
 
 # загрузка поинтов батчами
-def upload_points_in_batches(client, collection_name, points, batch_size=10):
+def upload_points_in_batches(client, collection_name, points, batch_size=20):
     for i in range(0, len(points), batch_size):
         batch = points[i:i + batch_size]
         client.upload_points(
