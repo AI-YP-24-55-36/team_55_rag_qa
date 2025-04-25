@@ -48,7 +48,7 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 # Загружаем модель для реранкинга
-reranker_model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+reranker_model = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L-2-v2")
 
 # функция удаляет коллекцию с таким именем, если она существует
 def clear_existing_collections(client):

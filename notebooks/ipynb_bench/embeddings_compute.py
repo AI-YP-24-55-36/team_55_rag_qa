@@ -26,6 +26,7 @@ file_handler.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
+
 def load_embedding_models():
     bm25_model = SparseTextEmbedding("Qdrant/bm25")
     dense_model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -49,7 +50,7 @@ def build_embeddings(item, bm25_model, dense_model, colbert_model):
 
 def generate_emb():
     sparce, dense, colbert = [], [], []
-    data_for_db, data_df = read_data(limit=-1)
+    data_for_db, data_df = read_data(limit=300)
 
     for item in tqdm(data_for_db):
         sparse_embedding, dense_embedding, colbert_embedding = build_embeddings(item, bm25_model, dense_model, colbert_model)
@@ -58,8 +59,6 @@ def generate_emb():
         colbert.append(colbert_embedding)
 
     return sparce, dense, colbert
-
-#
 
 def pad_to_fixed_length(matrix, target_len=1024):
     current_len = matrix.shape[0]
@@ -79,7 +78,7 @@ def memmap_emb(
     dense_output_path=f'{EMBEDDINGS_DIR}/dense_embeddings.memmap',
     colbert_output_path=f'{EMBEDDINGS_DIR}/colbert_embeddings.memmap',
     sparse_output_path=f'{EMBEDDINGS_DIR}/sparse_embeddings.pkl',
-    colbert_tokens=512,  # фиксированное количество токенов
+    colbert_tokens=1024,  # фиксированное количество токенов
     dtype='float32'
 ):
     # Получаем эмбеддинги
