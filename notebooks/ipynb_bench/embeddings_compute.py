@@ -46,11 +46,12 @@ def build_embeddings(item, bm25_model, dense_model, colbert_model):
     # ColBERT vector
     colbert_embedding = list(colbert_model.embed(text))[0]
 
+
     return sparse_embedding, dense_embedding, colbert_embedding
 
 def generate_emb():
     sparce, dense, colbert = [], [], []
-    data_for_db, data_df = read_data(limit=10)
+    data_for_db, data_df = read_data(limit=11000)
 
     for item in tqdm(data_for_db):
         sparse_embedding, dense_embedding, colbert_embedding = build_embeddings(item, bm25_model, dense_model, colbert_model)
@@ -86,7 +87,7 @@ def memmap_emb(
 
     num_texts = len(dense)
     dense_dim = len(dense[0])
-    colbert_shape = colbert[0].shape  # (tokens, 128)
+    colbert_shape = colbert[0].shape
 
     tokens, colbert_dim = colbert_shape
 
@@ -100,6 +101,7 @@ def memmap_emb(
     colbert_memmap = np.memmap(colbert_output_path, dtype=dtype, mode='w+',
                                shape=(num_texts, colbert_tokens, colbert_dim))
     for idx, matrix in enumerate(colbert):
+        padded_matrix = pad_to_fixed_length(matrix, target_len=colbert_tokens)
         padded_matrix = pad_to_fixed_length(matrix, target_len=colbert_tokens)
         colbert_memmap[idx] = padded_matrix
     del colbert_memmap
