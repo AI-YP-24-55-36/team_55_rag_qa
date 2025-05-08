@@ -6,8 +6,8 @@ from pathlib import Path
 from tqdm import tqdm
 from log_output import Tee
 from load_config import load_config
-from report_data import (init_results, evaluate_top_k_accuracy,
-                         compute_speed_stats, compute_final_accuracy,
+from report_data import (init_results, evaluate_accuracy,
+                         calculate_speed_stats, compute_final_accuracy,
                          log_topk_accuracy, log_speed_stats)
 
 config = load_config()
@@ -62,16 +62,14 @@ def benchmark_performance(client, collection_name, test_data, model, search_para
 
         search_results, query_time = run_query(client, collection_name, query_vector, search_params, max_top_k)
         results["speed"]["query_times"].append(query_time)
-
         found_contexts = [point.payload.get('context', '') for point in search_results.points]
-
-        evaluate_top_k_accuracy(results, found_contexts, true_context, top_k_values, query_text, idx)
+        evaluate_accuracy(results["accuracy"], found_contexts, true_context, top_k_values, query_text, idx)
 
         progress_bar.update(1)
 
     progress_bar.close()
 
-    compute_speed_stats(results)
+    calculate_speed_stats(results)
     compute_final_accuracy(results)
     log_topk_accuracy(results, top_k_values)
     log_speed_stats(results)

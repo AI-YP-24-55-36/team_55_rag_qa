@@ -37,15 +37,16 @@ def init_results(top_k_values):
         "accuracy": {k: {"correct": 0, "total": 0, "accuracy": 0} for k in top_k_values}
     }
 
-def evaluate_top_k_accuracy(results, found_contexts, true_context, top_k_values, query_text, query_idx):
+def evaluate_accuracy(accuracy_results, found_contexts, true_context, top_k_values, query_text, query_idx):
     for k in top_k_values:
-        results["accuracy"][k]["total"] += 1
+        accuracy_results[k]["total"] += 1
         if true_context in found_contexts[:k]:
-            results["accuracy"][k]["correct"] += 1
+            accuracy_results[k]["correct"] += 1
+            logger.info(f"BM25 Запрос {query_idx}: '{query_text[:50]}...' - Контекст найден в top-{k} ✓")
         else:
-            logger.error(f"Запрос {query_idx}: '{query_text[:50]}...' - Контекст не найден в top-{k} ✗")
+            logger.info(f"BM25 Запрос {query_idx}: '{query_text[:50]}...' - Контекст не найден в top-{k} ✗")
 
-def compute_speed_stats(results):
+def calculate_speed_stats(results):
     query_times = results["speed"]["query_times"]
     if query_times:
         results["speed"]["avg_time"] = sum(query_times) / len(query_times)
