@@ -15,12 +15,10 @@ from read_data_from_csv import read_data
 from cache_embed import generate_and_save_embeddings
 from load_config import load_config
 from visualisation import visualize_results
-from bench import benchmark_performance, benchmark_bm25
+from bench import benchmark_performance
 from hybrid_rerank import print_comparison, run_bench_hybrid
 from visualisation import visualize_results_rerank
-from sparse_bm25 import upload_bm25_data
-
-
+from sparse_bm25 import upload_bm25_data, benchmark_bm25
 
 
 config = load_config()
@@ -45,7 +43,6 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Бенчмарк для RAG системы')
-
     # Параметры подключения к Qdrant
     parser.add_argument('--qdrant-host', type=str, default='localhost',
                         help='Хост Qdrant сервера')
@@ -66,7 +63,7 @@ def parse_args():
     parser.add_argument('--limit', type=int, default=100,
                         help='Максимальное количество записей для использования')
 
-    # Параметры HNSW
+    # параметры HNSW для dense моделей
     parser.add_argument('--hnsw-ef', type=int, default=16,
                         help='Параметр ef для HNSW')
     parser.add_argument('--hnsw-m', type=int, default=16,
@@ -100,83 +97,15 @@ def create_collection(client, collection_name, vector_size, distance=Distance.CO
         }
     )
     logger.info(f"Коллекция {collection_name} создана")
-#
-# def upload_bm25_data(client, collection_name, data):
-#     """Загрузка данных в Qdrant с использованием встроенного BM25"""
-#
-#     logger.info(f"Загрузка {len(data)} документов в коллекцию {collection_name} с использованием BM25")
-#
-#     # Проверяем, существует ли коллекция
-#     collections = client.get_collections().collections
-#     collection_names = [collection.name for collection in collections]
-#
-#     if collection_name in collection_names:
-#         client.delete_collection(collection_name)
-#         logger.info(f"Коллекция {collection_name} удалена")
-#
-#     # Создаем коллекцию с BM25-индексом
-#
-#     client.create_collection(
-#         collection_name=collection_name,
-#         vectors_config={},
-#         sparse_vectors_config={
-#             "bm25": models.SparseVectorParams(
-#                 index=models.SparseIndexParams(on_disk=False),
-#                 modifier=models.Modifier.IDF
-#             )
-#         },
-#         hnsw_config=models.HnswConfigDiff(
-#             m=0,) # отключение построение графа
-#     ),
-#
-#
-#     logger.info(f"Коллекция {collection_name} создана с поддержкой BM25")
-#
-#     # Подготавливаем данные для загрузки
-#     bm25_embedding_model = SparseTextEmbedding("Qdrant/bm25")
-#
-#     points = []
-#
-#     for item in data:
-#
-#         vector = list(bm25_embedding_model.query_embed(item["context"]))
-#
-#
-#         if vector:
-#             sparse_embedding = vector[0]
-#             points.append(
-#                 models.PointStruct(
-#                     id=item["id"],
-#                     payload= item,
-#                     vector={
-#                         "bm25": {
-#                             "values": sparse_embedding.values.tolist(),
-#                             "indices": sparse_embedding.indices.tolist()
-#                         }
-#                     }
-#                 )
-#             )
-#
-#     client.upload_points(
-#         collection_name=collection_name,
-#         points=points
-#     )
-#
-#
-#     logger.info(f"Загрузка данных завершена для коллекции {collection_name}")
-
 
 def upload_data(client, collection_name, data, model, batch_size=100):
     """Загрузка данных в Qdrant"""
     logger.info(
         f"Загрузка {len(data)} документов в коллекцию {collection_name}")
     start_time = time.time()
-
-    # Создаем прогресс-бар
     progress_bar = tqdm(
         total=len(data), desc="Загрузка данных", unit="документ")
-
-    # Загрузка данных батчами
+    # загрузка данных батчами
     for i in range(0, len(data), batch_size):
         batch = data[i:i + batch_size]
         texts = [item["context"] for item in batch]
@@ -190,8 +119,6 @@ def upload_data(client, collection_name, data, model, batch_size=100):
             save_dir="embeddings"
         )
 
-
-        # Подготовка точек для загрузки
         points = []
         for j, (item, vector) in enumerate(zip(batch, vectors)):
             points.append({
@@ -202,15 +129,12 @@ def upload_data(client, collection_name, data, model, batch_size=100):
                 "payload": item
             })
 
-        # Загрузка в Qdrant
         client.upsert(
             collection_name=collection_name,
             points=points
         )
 
-        # Обновляем прогресс-бар
         progress_bar.update(len(batch))
-
         if (i + batch_size) % 1000 == 0 or (i + batch_size) >= len(data):
             logger.info(
                 f"Загружено {min(i + batch_size, len(data))}/{len(data)} документов")
@@ -248,11 +172,11 @@ def main():
         logger.info(f"Выбранные модели для сравнения: {', '.join(all_models)}")
         print(f"🔄 Выбранные модели для сравнения: {', '.join(all_models)}")
 
-        # Разделяем модели на обычные и BM25
+        # разделяем модели на dense и BM25
         models_to_compare = [model for model in all_models if model != 'BM25']
         use_bm25 = 'BM25' in all_models
 
-        # Инициализация моделей
+        # инициализация моделей
         model_instances = {}
         if models_to_compare:
             print(f"🔄 Инициализация моделей для dense векторов...")
@@ -271,26 +195,28 @@ def main():
                         f"Ошибка при инициализации модели {model_name}: {e}")
                     models_to_compare.remove(model_name)
 
+            # алгоритмы поиска для dense векторов
+            search_algorithms = {
+                "Exact Search": SearchParams(exact=True),
+                f"HNSW Users ef={args.hnsw_ef}": SearchParams(hnsw_ef=args.hnsw_ef),
+                "HNSW High Precision ef=512": SearchParams(hnsw_ef=512)
+            }
+
             progress_bar.close()
             print(f"✅ Модели инициализированы: {', '.join(models_to_compare)}")
 
-        # Инициализация BM25 модели отдельно, если она выбрана
+        # инициализация BM25 модели отдельно, если она выбрана
         bm25_model = None
         if use_bm25:
             print(f"🔄 Инициализация модели BM25...")
             logger.info("Инициализация модели BM25")
 
             bm25_collection_name = f"{args.collection_name}_bm25"
-            # Загрузка данных BM25
+            # загрузка данных BM25
             upload_bm25_data(client, bm25_collection_name, data_for_db)
             bm25_model = 'BM25'
 
-        # Определение алгоритмов поиска для dense векторов
-        search_algorithms = {
-            "Exact Search": SearchParams(exact=True),
-            # f"HNSW Users ef={args.hnsw_ef}": SearchParams(hnsw_ef=args.hnsw_ef),
-            # "HNSW High Precision ef=512": SearchParams(hnsw_ef=512)
-        }
+            search_algorithms = {"Exact Search": SearchParams(exact=True)}
 
         # Результаты для BM25
         speed_results = {}
@@ -468,6 +394,7 @@ def main():
         print("Графики сохранены в директории ./logs/graphs/")
         print("=" * 80)
 
+    # гибридный поиск в гибридной коллекции
     else:
         print("\n" + "=" * 80)
         print("🚀 ЗАПУСК БЕНЧМАРКА RAG СИСТЕМЫ С ГИБРИДНЫМ ПОИСКОМ")
