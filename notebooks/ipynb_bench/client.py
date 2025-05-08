@@ -6,10 +6,8 @@ from pathlib import Path
 
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer
-from fastembed import SparseTextEmbedding
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, SearchParams, HnswConfigDiff
-from qdrant_client import models
 
 from read_data_from_csv import read_data
 from cache_embed import generate_and_save_embeddings
@@ -334,17 +332,16 @@ def main():
                     print(f" Максимальное время: {result['max_time'] * 1000:.2f} мс")
                     print(f" Минимальное время: {result['min_time'] * 1000:.2f} мс")
 
-            # Вывод результатов для BM25
-            print(bm25_results)
-            if use_bm25 and bm25_results:
-                print(f"\nМодель: BM25")
-                for algo_name in bm25_results["speed"].keys():
-                    result = bm25_results["speed"][algo_name]
-                    print(f"  Алгоритм: {algo_name}")
-                    print(f"  Среднее время: {result['avg_time'] * 1000:.2f} мс")
-                    print(f"  Медианное время: {result['median_time'] * 1000:.2f} мс")
-                    print(f"  Максимальное время: {result['max_time'] * 1000:.2f} мс")
-                    print(f"  Минимальное время: {result['min_time'] * 1000:.2f} мс")
+        # Вывод результатов для BM25
+        if use_bm25 and bm25_results:
+            print(f"\nМодель: BM25")
+            for algo_name in bm25_results["speed"].keys():
+                result = bm25_results["speed"][algo_name]
+                print(f"  Алгоритм: {algo_name}")
+                print(f"  Среднее время: {result['avg_time'] * 1000:.2f} мс")
+                print(f"  Медианное время: {result['median_time'] * 1000:.2f} мс")
+                print(f"  Максимальное время: {result['max_time'] * 1000:.2f} мс")
+                print(f"  Минимальное время: {result['min_time'] * 1000:.2f} мс")
 
 
         # Вывод результатов точности
