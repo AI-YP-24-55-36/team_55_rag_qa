@@ -16,7 +16,8 @@ from cache_embed import generate_and_save_embeddings
 from load_config import load_config
 from visualisation import visualize_results
 from bench import benchmark_performance, benchmark_bm25
-from hybrid_rerank import upload_hybrid_data, benchmark_hybrid_rerank, reranker, print_comparison, visualize_results_rerank
+from hybrid_rerank import upload_hybrid_data, benchmark_hybrid_rerank, reranker, print_comparison
+from visualisation import visualize_results_rerank
 
 
 
@@ -25,10 +26,10 @@ BASE_DIR = Path(config["paths"]["base_dir"])
 LOGS_DIR = BASE_DIR / config["paths"]["logs_dir"]
 GRAPHS_DIR = BASE_DIR / config["paths"]["graphs_dir"]
 
-# Настройка логгера для текущего модуля
+
 logger = logging.getLogger('client')
 logger.setLevel(logging.INFO)
-logger.propagate = False  # Отключаем передачу логов родительским логгерам
+logger.propagate = False
 
 # Создание обработчика для записи логов в файл
 file_handler = logging.FileHandler(f'{LOGS_DIR}/client.log')
@@ -130,8 +131,13 @@ def upload_bm25_data(client, collection_name, data):
                 index=models.SparseIndexParams(on_disk=False),
                 modifier=models.Modifier.IDF
             )
-        }
-    )
+        },
+        optimizers_config=models.OptimizersConfigDiff(
+            indexing_threshold=100000,
+        ),
+
+    ),
+
 
     logger.info(f"Коллекция {collection_name} создана с поддержкой BM25")
 

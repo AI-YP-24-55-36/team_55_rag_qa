@@ -5,22 +5,24 @@ import time
 from pathlib import Path
 import pickle
 
-import matplotlib.pyplot as plt
 import numpy as np
 from fastembed import SparseTextEmbedding, LateInteractionTextEmbedding
 from beir.retrieval.models import SentenceBERT
 from sentence_transformers import CrossEncoder
+# from fastembed.rerank.cross_encoder import TextCrossEncoder
+
 from qdrant_client import models
 from qdrant_client.models import (
     Distance,
     Modifier,
+    OptimizersConfigDiff,
     MultiVectorConfig,
     SparseIndexParams,
     SparseVectorParams,
     VectorParams
 )
-from tqdm import tqdm
 
+from tqdm import tqdm
 from log_output import Tee
 from load_config import load_config
 
@@ -40,22 +42,26 @@ logger.propagate = False
 file_handler = logging.FileHandler(f'{LOGS_DIR}/hybrid.log')
 file_handler.setLevel(logging.INFO)
 
-# Форматирование логов
+# формат логов
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
-
-# Добавление обработчиков к логгеру
 logger.addHandler(file_handler)
 
-# Загружаем модель для реранкинга
+# модель для реранкинга
 reranker_model = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L-2-v2")
+# reranker_model = TextCrossEncoder(model_name='jinaai/jina-reranker-v2-base-multilingual')
 
 # функция удаляет коллекцию с таким именем, если она существует
-def clear_existing_collections(client):
+def clear_existing_collections(client,  collection_name):
     collections = client.get_collections().collections
-    for collection in collections:
-        client.delete_collection(collection.name)
-        print(f"Collection {collection.name} has been cleared")
+    collection_names = [collection.name for collection in collections]
+
+    if collection_name in collection_names:
+        print(f"Колекция {collection_name} существует, удаляем" )
+        logger.info(f"Колекция {collection_name} существует, удаляем" )
+
+        client.delete_collection(collection_name)
+        logger.info(f"Коллекция {collection_name} удалена")
 
 # функция для создания коллекции
 def create_hybrid_collection(client, collection_name):
@@ -66,6 +72,7 @@ def create_hybrid_collection(client, collection_name):
                 size=768,
                 distance=Distance.COSINE
             ),
+
             "colbertv2.0": VectorParams(
                 size=128,
                 distance=Distance.COSINE,
@@ -74,10 +81,17 @@ def create_hybrid_collection(client, collection_name):
         },
         sparse_vectors_config={
             "bm25": SparseVectorParams(
-                index=SparseIndexParams(on_disk=False),
-                modifier=Modifier.IDF
-            )
-        }
+                index=SparseIndexParams(on_disk=False,
+
+            ),
+                modifier=Modifier.IDF,
+                )
+
+        },
+        optimizers_config=OptimizersConfigDiff(
+            indexing_threshold=0
+        )
+
     )
     logger.info(f"Создана коллекция {collection_name}, готова к заполнению")
     print(f"Создана коллекция {collection_name}, готова к заполнению")
@@ -94,7 +108,7 @@ def build_point_from_files(
     dense_embeddings,
     colbert_embeddings
 ):
-    # Получаем эмбеддинги по индексу
+    # Получаем эмбеддинги по индексу из файлов memmap
     sparse_embedding = sparse_embeddings[idx]
     dense_embedding = dense_embeddings[idx].tolist()
     colbert_embedding = colbert_embeddings[idx].tolist()
@@ -122,13 +136,13 @@ def upload_points_in_batches(client, collection_name, points, batch_size=50):
         )
         print(f"Загружено {i + len(batch)} из {len(points)} документов")
 
+
 # создание и загрузка коллекции
 def upload_hybrid_data(client, collection_name: str, data):
     """Загрузка данных в Qdrant с поддержкой гибридного поиска (BM25 + Dense + ColBERT)"""
     logger.info(f"Загрузка {len(data)} документов в коллекцию {collection_name} с гибридным поиском")
-    clear_existing_collections(client)
+    clear_existing_collections(client, collection_name)
     create_hybrid_collection(client, collection_name)
-    # bm25_model, dense_model, colbert_model = load_embedding_models()
     logger.info(f"⏳ Создание точек загрузки {collection_name}")
     print(f"⏳ Создание точек загрузки  {collection_name}")
     points = []
@@ -140,34 +154,39 @@ def upload_hybrid_data(client, collection_name: str, data):
     logger.info(f"✅ Данные успешно загружены в коллекцию {collection_name}")
     print(f"✅ Данные успешно загружены в коллекцию {collection_name}")
 
+    # запуск индексации
+    client.update_collection(
+        collection_name=collection_name,
+        optimizer_config=models.OptimizersConfigDiff(indexing_threshold=5000),
+    )
 
-#  Для теста модели
+
+#  фунция загрузки моделей для создания эмбеддингов тестовых запросов
 def load_embedding():
     return {
         "bm25": SparseTextEmbedding("Qdrant/bm25"),
         "dense": SentenceBERT("msmarco-distilbert-base-tas-b"),
         "colbert": LateInteractionTextEmbedding("colbert-ir/colbertv2.0")
     }
-
+# кодировка тестового запроса
 def encode_query(query_text, models):
     sparse_vector = list(models["bm25"].query_embed(query_text))
     sparse_embedding = sparse_vector[0] if sparse_vector else None
     dense_embedding = models["dense"].encode_corpus([{"text": query_text}], convert_to_tensor=False)[0]
     colbert_embedding = list(models["colbert"].embed(query_text))[0]
-
     return sparse_embedding, dense_embedding, colbert_embedding
 
-
+# поиск контекста в БД
 def run_hybrid_search(client, collection_name, sparse_embedding, dense_embedding, colbert_embedding, top_k):
     prefetch = [
-        models.Prefetch(query=dense_embedding, using="dense", limit=20),
+        models.Prefetch(query=dense_embedding, using="dense", limit=top_k),
         models.Prefetch(
             query=models.SparseVector(
                 indices=sparse_embedding.indices.tolist() if sparse_embedding else [],
                 values=sparse_embedding.values.tolist() if sparse_embedding else []
             ),
             using="bm25",
-            limit=20
+            limit=top_k,
         ),
     ]
 
@@ -190,8 +209,6 @@ def run_hybrid_search(client, collection_name, sparse_embedding, dense_embedding
 def evaluate_accuracy(found_contexts, true_context, top_k_values, results, stage):
     if not found_contexts:
         return
-
-    # Проверим, является ли каждый элемент кортежем
     if not all(isinstance(item, (tuple, list)) and len(item) == 2 for item in found_contexts):
         raise ValueError(f"Неверный формат found_contexts: ожидался список кортежей (context, score), получено: {found_contexts}")
 
@@ -226,7 +243,7 @@ def log_final_metrics(results, top_k_values):
     logger.info(f"Hybrid Search Максимальное время поиска: {results['speed']['max_time'] * 1000:.2f} мс")
     logger.info(f"Hybrid Search Минимальное время поиска: {results['speed']['min_time'] * 1000:.2f} мс")
 
-
+# запуск бенчмарка
 def benchmark_hybrid_rerank(client, collection_name, test_data, top_k_values=[1, 3], reranker=None):
     print(f"\n🔍 Запуск оценки производительности Гибридного Поиска + Реранка для коллекции '{collection_name}'")
     logger.info(f"Запуск оценки производительности Гибридного Поиска + Реранка для коллекции '{collection_name}'")
@@ -274,7 +291,28 @@ def benchmark_hybrid_rerank(client, collection_name, test_data, top_k_values=[1,
     print(f"✅ Оценка производительности Hybrid Search завершена для коллекции '{collection_name}'")
     return results
 
-def reranker(query, candidates):
+# функция под TextCrossEncoder
+# def reranker(query, candidates, top_k=None):
+#     #  пары (query, context)
+#     texts = [context for context, _ in candidates]
+#
+#     #  оценки от модели через .rerank()
+#     new_scores = list(reranker_model.rerank(query, texts))
+#
+#     # сопоставление индексы и оценки
+#     ranking = [(i, score) for i, score in enumerate(new_scores)]
+#     ranking.sort(key=lambda x: x[1], reverse=True)
+#
+#     # сортировка кандидатов по оценкам
+#     reranked = [(texts[i], score) for i, score in ranking]
+#
+#     if top_k is not None:
+#         return reranked[:top_k]
+#     return reranked
+
+
+# функция под CrossEncoder
+def reranker(query, candidates, top_k=None):
     texts = [(query, context) for context, _ in candidates]
     scores = reranker_model.predict(texts)
 
@@ -302,130 +340,3 @@ def print_comparison(results_without_rerank, results_with_rerank, top_k_values=[
         print(f"    - С реранкингом: {acc_after:.4f}")
 
 
-def visualize_results_rerank(results_without_rerank, results_with_rerank, top_k_values=[1, 3],
-                             title_prefix="Сравнение для гибридного поиска с реранкингом и без", save_dir=f"{GRAPHS_DIR}"):
-
-    print(f"\n📊 Создание визуализаций результатов реранкинга...")
-    logger.info("Создание визуализаций результатов реранкинга")
-
-    print(save_dir)
-
-    # Создаем директорию для сохранения графиков, если она не существует
-    Path(save_dir).mkdir(exist_ok=True, parents=True)
-
-    # Генерация метки времени
-    timestr = time.strftime("%Y%m%d_%H%M%S")  # Убедимся, что символы в имени файла допустимы
-
-    # --- 1️⃣ Визуализация времени выполнения ---
-    plt.figure(figsize=(10, 5))
-
-    speeds = [
-        results_without_rerank['speed']['avg_time'] * 1000,  # в миллисекундах
-        results_with_rerank['speed']['avg_time'] * 1000
-    ]
-
-    bar_width = 0.8 /2
-    n_groups = len(top_k_values)
-    index = np.arange(n_groups)
-    colors = plt.cm.tab10(np.linspace(0, 1, 2))
-    labels = ["Без реранкинга", "С реранкингом"]  # Подписи столбцов
-
-    # # Создаём график времени
-
-    # Построение столбчатой диаграммы
-    plt.bar(
-        index,
-        speeds,
-        bar_width,
-        color=colors,  # Цвета столбцов
-        edgecolor='black',  # Цвет границы столбцов
-        linewidth=0.5,  # Толщина границы столбцов
-    )
-
-    # Добавляем значения над столбцами
-    for i, v in enumerate(speeds):
-        if v > 0:
-            plt.text(
-                index[i],
-                v + 1,
-                f"{v:.1f}",
-                ha='center',
-                va='bottom',
-                fontsize=6,
-            )
-    # Настройка осей
-    plt.xticks(index, labels)
-    plt.ylabel("Время (мс)")
-    plt.title(f"{title_prefix}: Время поиска")
-
-    # Сетка для оси Y
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-
-    # Сохранение графика (до plt.show())
-    speed_save_path = f"{save_dir}/speed_comparison_{timestr}_hybrid.png"
-    plt.savefig(speed_save_path, dpi=300, bbox_inches='tight')
-
-    # --- 2️⃣ Визуализация точности поиска ---
-    plt.figure(figsize=(10, 5))
-    acc_before = [results_without_rerank["accuracy"]["before_rerank"][k]["accuracy"] for k in top_k_values]
-    acc_after = [results_with_rerank["accuracy"]["after_rerank"][k]["accuracy"] for k in top_k_values]
-
-    # Настройки для графика
-    bar_width = 0.8 / 2
-    n_groups = len(top_k_values)
-    index = np.arange(n_groups)
-    colors = plt.cm.tab10(np.linspace(0, 1, 2))
-    labels = ["Без реранкинга", "С реранкингом"]
-
-    # Построение столбчатой диаграммы для точности
-    plt.bar(
-        index - bar_width / 2,
-        acc_before,
-        bar_width,
-        label=labels[0],
-        color=colors[0],
-        edgecolor='black',
-        linewidth=0.5,
-    )
-
-    plt.bar(
-        index + bar_width / 2,
-        acc_after,
-        bar_width,
-        label=labels[1],
-        color=colors[1],
-        edgecolor='black',
-        linewidth=0.5,
-    )
-
-    # Добавляем значения над столбцами
-    for i, (v_before, v_after) in enumerate(zip(acc_before, acc_after)):
-        if v_before > 0:
-            plt.text(
-                index[i] - bar_width / 2,
-                v_before + 0.01,
-                f"{v_before:.2f}",
-                ha='center',
-                va='bottom',
-                fontsize=6,
-            )
-        if v_after > 0:
-            plt.text(
-                index[i] + bar_width / 2,
-                v_after + 0.01,
-                f"{v_after:.2f}",
-                ha='center',
-                va='bottom',
-                fontsize=6,
-            )
-
-    # Настройка осей
-    plt.xticks(index, [f"Top-{k}" for k in top_k_values])
-    plt.ylabel("Точность (Accuracy)")
-    plt.title(f"{title_prefix}: Точность поиска")
-
-    # Легенда и сетка
-    plt.legend()
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    accuracy_save_path = f"{save_dir}/accuracy_comparison_{timestr}_hybrid.png"
-    plt.savefig(accuracy_save_path, dpi=300, bbox_inches='tight')

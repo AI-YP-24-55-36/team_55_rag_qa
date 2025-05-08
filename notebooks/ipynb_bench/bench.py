@@ -90,7 +90,6 @@ def benchmark_bm25(client, collection_name, test_data, search_params=None, top_k
             search_params=search_params
         )
 
-
         end_time = time.time()
         query_time = end_time - start_time
         results["speed"]["query_times"].append(query_time)
@@ -212,10 +211,9 @@ def benchmark_performance(client, collection_name, test_data, model, search_para
             # Проверяем, найден ли правильный контекст в первых k результатах
             if true_context in found_contexts[:k]:
                 results["accuracy"][k]["correct"] += 1
-                logger.info(
-                    f"Запрос {idx}: '{query_text[:50]}...' - Контекст найден в top-{k} ✓")
+
             else:
-                logger.info(
+                logger.error(
                     f"Запрос {idx}: '{query_text[:50]}...' - Контекст не найден в top-{k} ✗")
 
         # Обновляем прогресс-бар
