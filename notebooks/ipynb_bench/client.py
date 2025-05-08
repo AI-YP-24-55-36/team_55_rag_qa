@@ -16,8 +16,10 @@ from cache_embed import generate_and_save_embeddings
 from load_config import load_config
 from visualisation import visualize_results
 from bench import benchmark_performance, benchmark_bm25
-from hybrid_rerank import upload_hybrid_data, benchmark_hybrid_rerank, reranker, print_comparison
+from hybrid_rerank import print_comparison, run_bench_hybrid
 from visualisation import visualize_results_rerank
+from sparse_bm25 import upload_bm25_data
+
 
 
 
@@ -31,15 +33,11 @@ logger = logging.getLogger('client')
 logger.setLevel(logging.INFO)
 logger.propagate = False
 
-# Создание обработчика для записи логов в файл
+# обработчики для записи логов в файл
 file_handler = logging.FileHandler(f'{LOGS_DIR}/client.log')
 file_handler.setLevel(logging.INFO)
-
-# Форматирование логов
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
-
-# Добавление обработчиков к логгеру
 logger.addHandler(file_handler)
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -91,11 +89,6 @@ def create_collection(client, collection_name, vector_size, distance=Distance.CO
         client.delete_collection(collection_name)
         logger.info(f"Коллекция {collection_name} удалена")
 
-    # if len(collections):
-    #     for el in collection_names:
-    #         client.delete_collection(el)
-    #         print(f"Collection {el} has been cleared")
-
     # Создаем коллекцию с именованными векторами
     client.create_collection(
         collection_name=collection_name,
@@ -107,72 +100,70 @@ def create_collection(client, collection_name, vector_size, distance=Distance.CO
         }
     )
     logger.info(f"Коллекция {collection_name} создана")
-
-def upload_bm25_data(client, collection_name, data):
-    """Загрузка данных в Qdrant с использованием встроенного BM25"""
-
-    logger.info(f"Загрузка {len(data)} документов в коллекцию {collection_name} с использованием BM25")
-
-    # Проверяем, существует ли коллекция
-    collections = client.get_collections().collections
-    collection_names = [collection.name for collection in collections]
-
-    if collection_name in collection_names:
-        client.delete_collection(collection_name)
-        logger.info(f"Коллекция {collection_name} удалена")
-
-    # Создаем коллекцию с BM25-индексом
-
-    client.create_collection(
-        collection_name=collection_name,
-        vectors_config={},
-        sparse_vectors_config={
-            "bm25": models.SparseVectorParams(
-                index=models.SparseIndexParams(on_disk=False),
-                modifier=models.Modifier.IDF
-            )
-        },
-        optimizers_config=models.OptimizersConfigDiff(
-            indexing_threshold=100000,
-        ),
-
-    ),
-
-
-    logger.info(f"Коллекция {collection_name} создана с поддержкой BM25")
-
-    # Подготавливаем данные для загрузки
-    bm25_embedding_model = SparseTextEmbedding("Qdrant/bm25")
-
-    points = []
-
-    for item in data:
-
-        vector = list(bm25_embedding_model.query_embed(item["context"]))
-
-
-        if vector:
-            sparse_embedding = vector[0]
-            points.append(
-                models.PointStruct(
-                    id=item["id"],
-                    payload= item,
-                    vector={
-                        "bm25": {
-                            "values": sparse_embedding.values.tolist(),
-                            "indices": sparse_embedding.indices.tolist()
-                        }
-                    }
-                )
-            )
-
-    client.upload_points(
-        collection_name=collection_name,
-        points=points
-    )
-
-
-    logger.info(f"Загрузка данных завершена для коллекции {collection_name}")
+#
+# def upload_bm25_data(client, collection_name, data):
+#     """Загрузка данных в Qdrant с использованием встроенного BM25"""
+#
+#     logger.info(f"Загрузка {len(data)} документов в коллекцию {collection_name} с использованием BM25")
+#
+#     # Проверяем, существует ли коллекция
+#     collections = client.get_collections().collections
+#     collection_names = [collection.name for collection in collections]
+#
+#     if collection_name in collection_names:
+#         client.delete_collection(collection_name)
+#         logger.info(f"Коллекция {collection_name} удалена")
+#
+#     # Создаем коллекцию с BM25-индексом
+#
+#     client.create_collection(
+#         collection_name=collection_name,
+#         vectors_config={},
+#         sparse_vectors_config={
+#             "bm25": models.SparseVectorParams(
+#                 index=models.SparseIndexParams(on_disk=False),
+#                 modifier=models.Modifier.IDF
+#             )
+#         },
+#         hnsw_config=models.HnswConfigDiff(
+#             m=0,) # отключение построение графа
+#     ),
+#
+#
+#     logger.info(f"Коллекция {collection_name} создана с поддержкой BM25")
+#
+#     # Подготавливаем данные для загрузки
+#     bm25_embedding_model = SparseTextEmbedding("Qdrant/bm25")
+#
+#     points = []
+#
+#     for item in data:
+#
+#         vector = list(bm25_embedding_model.query_embed(item["context"]))
+#
+#
+#         if vector:
+#             sparse_embedding = vector[0]
+#             points.append(
+#                 models.PointStruct(
+#                     id=item["id"],
+#                     payload= item,
+#                     vector={
+#                         "bm25": {
+#                             "values": sparse_embedding.values.tolist(),
+#                             "indices": sparse_embedding.indices.tolist()
+#                         }
+#                     }
+#                 )
+#             )
+#
+#     client.upload_points(
+#         collection_name=collection_name,
+#         points=points
+#     )
+#
+#
+#     logger.info(f"Загрузка данных завершена для коллекции {collection_name}")
 
 
 def upload_data(client, collection_name, data, model, batch_size=100):
@@ -226,7 +217,6 @@ def upload_data(client, collection_name, data, model, batch_size=100):
 
     # Закрываем прогресс-бар
     progress_bar.close()
-
     elapsed_time = time.time() - start_time
     logger.info(f"Загрузка данных завершена за {elapsed_time:.2f} секунд")
     print(f"✅ Загрузка данных завершена за {elapsed_time:.2f} секунд")
@@ -234,24 +224,22 @@ def upload_data(client, collection_name, data, model, batch_size=100):
 
 def main():
     args = parse_args()
-    # Уведомление о запуске бенчмарка
+    hybrid = args.hybrid
     print("\n" + "="*80)
     print("🚀 ЗАПУСК БЕНЧМАРКА RAG СИСТЕМЫ")
     print("="*80)
     logger.info("Запуск бенчмарка RAG системы")
 
-    # Инициализация клиента Qdrant
+    # инициализация клиента Qdrant
     client = QdrantClient(host=args.qdrant_host, port=args.qdrant_port)
-
-    # Загрузка данных с ограничением по размеру
+    # загрузка данных с ограничением по размеру
     logger.info(f"Загрузка данных с limit={args.limit}")
     print(f"📂 Загрузка данных (limit={args.limit})...")
+
     data_for_db, data_df = read_data(limit=args.limit)
 
     logger.info(f"Загружено {len(data_for_db)} документов")
     print(f"✅ Загружено {len(data_for_db)} документов")
-
-    hybrid = args.hybrid
 
     if hybrid == 0:
 
@@ -300,8 +288,8 @@ def main():
         # Определение алгоритмов поиска для dense векторов
         search_algorithms = {
             "Exact Search": SearchParams(exact=True),
-            f"HNSW Users ef={args.hnsw_ef}": SearchParams(hnsw_ef=args.hnsw_ef),
-            "HNSW High Precision ef=512": SearchParams(hnsw_ef=512)
+            # f"HNSW Users ef={args.hnsw_ef}": SearchParams(hnsw_ef=args.hnsw_ef),
+            # "HNSW High Precision ef=512": SearchParams(hnsw_ef=512)
         }
 
         # Результаты для BM25
@@ -412,34 +400,25 @@ def main():
         if models_to_compare:
             for model_name in models_to_compare:
                 print(f"\nМодель: {model_name}")
-
                 for algo_name in speed_results[model_name].keys():
                     result = speed_results[model_name][algo_name]
-
-                    print(f"  Алгоритм: {algo_name}")
-                    print(f"    Среднее время: {result['avg_time'] * 1000:.2f} мс")
-                    print(
-                        f"    Медианное время: {result['median_time'] * 1000:.2f} мс")
-                    print(
-                        f"    Максимальное время: {result['max_time'] * 1000:.2f} мс")
-                    print(
-                        f"    Минимальное время: {result['min_time'] * 1000:.2f} мс")
+                    print(f" Алгоритм: {algo_name}")
+                    print(f" Среднее время: {result['avg_time'] * 1000:.2f} мс")
+                    print(f" Медианное время: {result['median_time'] * 1000:.2f} мс")
+                    print(f" Максимальное время: {result['max_time'] * 1000:.2f} мс")
+                    print(f" Минимальное время: {result['min_time'] * 1000:.2f} мс")
 
             # Вывод результатов для BM25
+            print(bm25_results)
             if use_bm25 and bm25_results:
                 print(f"\nМодель: BM25")
-
                 for algo_name in bm25_results["speed"].keys():
                     result = bm25_results["speed"][algo_name]
-
                     print(f"  Алгоритм: {algo_name}")
-                    print(f"    Среднее время: {result['avg_time'] * 1000:.2f} мс")
-                    print(
-                        f"    Медианное время: {result['median_time'] * 1000:.2f} мс")
-                    print(
-                        f"    Максимальное время: {result['max_time'] * 1000:.2f} мс")
-                    print(
-                        f"    Минимальное время: {result['min_time'] * 1000:.2f} мс")
+                    print(f"  Среднее время: {result['avg_time'] * 1000:.2f} мс")
+                    print(f"  Медианное время: {result['median_time'] * 1000:.2f} мс")
+                    print(f"  Максимальное время: {result['max_time'] * 1000:.2f} мс")
+                    print(f"  Минимальное время: {result['min_time'] * 1000:.2f} мс")
 
 
         # Вывод результатов точности
@@ -490,8 +469,6 @@ def main():
         print("=" * 80)
 
     else:
-
-        # Уведомление о запуске бенчмарка
         print("\n" + "=" * 80)
         print("🚀 ЗАПУСК БЕНЧМАРКА RAG СИСТЕМЫ С ГИБРИДНЫМ ПОИСКОМ")
         print("=" * 80)
@@ -500,33 +477,9 @@ def main():
         args = parse_args()
         data_for_db, data_df = read_data(limit=args.limit)
         client = QdrantClient(host=args.qdrant_host, port=args.qdrant_port)
-
-        # Загрузка данных
-        upload_hybrid_data(
-            client=client,
-            collection_name="hybrid_collection",
-            data=data_for_db
-        )
-
-        results_without_rerank = benchmark_hybrid_rerank(
-            client=client,
-            collection_name="hybrid_collection",
-            test_data=data_df,
-            reranker=None
-        )
-
-
-        # Запускаем бенчмарк с реранкингом
-        results_with_rerank = benchmark_hybrid_rerank(
-            client=client,
-            collection_name="hybrid_collection",
-            test_data=data_df,
-            reranker=reranker  # Передаем функцию реранкинга
-        )
-
+        results_without_rerank, results_with_rerank = run_bench_hybrid(client, data_for_db, data_df)
         print_comparison(results_without_rerank, results_with_rerank)
         visualize_results_rerank(results_without_rerank, results_with_rerank)
-
         logger.info("Бенчмарк завершен успешно")
         print("\n" + "=" * 80)
         print("✅ БЕНЧМАРК ЗАВЕРШЕН УСПЕШНО")

@@ -340,3 +340,27 @@ def print_comparison(results_without_rerank, results_with_rerank, top_k_values=[
         print(f"    - С реранкингом: {acc_after:.4f}")
 
 
+def run_bench_hybrid(client, data_for_db, data_df):
+    # Загрузка данных
+    upload_hybrid_data(
+        client=client,
+        collection_name="hybrid_collection",
+        data=data_for_db
+    )
+
+    results_without_rerank = benchmark_hybrid_rerank(
+        client=client,
+        collection_name="hybrid_collection",
+        test_data=data_df,
+        reranker=None
+    )
+
+    # Запускаем бенчмарк с реранкингом
+    results_with_rerank = benchmark_hybrid_rerank(
+        client=client,
+        collection_name="hybrid_collection",
+        test_data=data_df,
+        reranker=reranker  # передача функцию реранкинга
+    )
+
+    return results_without_rerank, results_with_rerank

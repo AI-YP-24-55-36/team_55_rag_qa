@@ -3,11 +3,9 @@ import logging
 import sys
 import time
 from pathlib import Path
-
 from tqdm import tqdm
 from fastembed import SparseTextEmbedding
 from qdrant_client import models
-
 from log_output import Tee
 from load_config import load_config
 
