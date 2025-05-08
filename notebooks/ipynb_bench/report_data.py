@@ -73,3 +73,60 @@ def log_speed_stats(results):
     logger.info(f"Медианное время поиска: {results['speed']['median_time'] * 1000:.2f} мс")
     logger.info(f"Максимальное время поиска: {results['speed']['max_time'] * 1000:.2f} мс")
     logger.info(f"Минимальное время поиска: {results['speed']['min_time'] * 1000:.2f} мс")
+
+
+
+def print_speed_results(speed_results, bm25_results, models_to_compare):
+    print("\n" + "=" * 80)
+    print("РЕЗУЛЬТАТЫ ОЦЕНКИ СКОРОСТИ ПОИСКА")
+    print("=" * 80)
+
+    if models_to_compare:
+        for model_name in models_to_compare:
+            print(f"\nМодель: {model_name}")
+            for algo_name, result in speed_results[model_name].items():
+                print(f" Алгоритм: {algo_name}")
+                print(f" Среднее время: {result['avg_time'] * 1000:.2f} мс")
+                print(f" Медианное время: {result['median_time'] * 1000:.2f} мс")
+                print(f" Максимальное время: {result['max_time'] * 1000:.2f} мс")
+                print(f" Минимальное время: {result['min_time'] * 1000:.2f} мс")
+
+    if bm25_results:
+        print(f"\nМодель: BM25")
+        for algo_name, result in bm25_results["speed"].items():
+            print(f"  Алгоритм: {algo_name}")
+            print(f"  Среднее время: {result['avg_time'] * 1000:.2f} мс")
+            print(f"  Медианное время: {result['median_time'] * 1000:.2f} мс")
+            print(f"  Максимальное время: {result['max_time'] * 1000:.2f} мс")
+            print(f"  Минимальное время: {result['min_time'] * 1000:.2f} мс")
+def print_accuracy_results(accuracy_results, bm25_results, models_to_compare):
+    print("\n" + "=" * 80)
+    print("РЕЗУЛЬТАТЫ ОЦЕНКИ ТОЧНОСТИ ПОИСКА")
+    print("=" * 80)
+
+    # Результаты для dense моделей
+    if models_to_compare:
+        for model_name in models_to_compare:
+            print(f"\nМодель: {model_name}")
+            for algo_name in accuracy_results[model_name].keys():
+                print(f"  Алгоритм: {algo_name}")
+                for k in [1, 3]:
+                    if k in accuracy_results[model_name][algo_name]:
+                        result = accuracy_results[model_name][algo_name][k]
+                        print(
+                            f"    Top-{k}: Точность = {result['accuracy']:.4f} "
+                            f"({result['correct']}/{result['total']})"
+                        )
+
+    # Результаты для BM25
+    if bm25_results:
+        print(f"\nМодель: BM25")
+        for algo_name in bm25_results["accuracy"].keys():
+            print(f"  Алгоритм: {algo_name}")
+            for k in [1, 3]:
+                if k in bm25_results["accuracy"][algo_name]:
+                    result = bm25_results["accuracy"][algo_name][k]
+                    print(
+                        f"    Top-{k}: Точность = {result['accuracy']:.4f} "
+                        f"({result['correct']}/{result['total']})"
+                    )
