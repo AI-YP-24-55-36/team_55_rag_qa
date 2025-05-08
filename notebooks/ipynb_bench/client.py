@@ -1,15 +1,13 @@
 import argparse
-import logging
 import os
 import time
-from pathlib import Path
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, SearchParams, HnswConfigDiff
 from read_data_from_csv import read_data
 from cache_embed import generate_and_save_embeddings
-from load_config import load_config
+from logger_init import setup_paths, setup_logging
 from visualisation import visualize_results
 from bench import benchmark_performance
 from hybrid_rerank import print_comparison, run_bench_hybrid
@@ -18,22 +16,8 @@ from sparse_bm25 import upload_bm25_data, benchmark_bm25
 from report_data import print_speed_results, print_accuracy_results
 
 
-config = load_config()
-BASE_DIR = Path(config["paths"]["base_dir"])
-LOGS_DIR = BASE_DIR / config["paths"]["logs_dir"]
-GRAPHS_DIR = BASE_DIR / config["paths"]["graphs_dir"]
-
-
-logger = logging.getLogger('client')
-logger.setLevel(logging.INFO)
-logger.propagate = False
-# обработчики для записи логов в файл
-file_handler = logging.FileHandler(f'{LOGS_DIR}/client.log')
-file_handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-
+BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR = setup_paths()
+logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 

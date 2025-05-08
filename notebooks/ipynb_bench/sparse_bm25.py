@@ -1,38 +1,15 @@
-import datetime
-import logging
-import sys
 import time
 from tqdm import tqdm
-from pathlib import Path
 from fastembed import SparseTextEmbedding
 from qdrant_client import models
-from log_output import Tee
-from load_config import load_config
+from logger_init import setup_paths, setup_logging
 from report_data import (init_results, evaluate_accuracy,
                          calculate_speed_stats, compute_final_accuracy,
                          log_topk_accuracy, log_speed_stats)
 
-config = load_config()
-BASE_DIR = Path(config["paths"]["base_dir"])
-LOGS_DIR = BASE_DIR / config["paths"]["logs_dir"]
-GRAPHS_DIR = BASE_DIR / config["paths"]["graphs_dir"]
-OUTPUT_DIR = BASE_DIR / config["paths"]["output_dir"]
-EMBEDDINGS_DIR = BASE_DIR / config["paths"]["embeddings_dir"]
-timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-sys.stdout = Tee(f"{OUTPUT_DIR}/log_{timestamp}.txt")
 
-logger = logging.getLogger('hybrid')
-logger.setLevel(logging.INFO)
-logger.propagate = False
-
-file_handler = logging.FileHandler(f'{LOGS_DIR}/hybrid.log')
-file_handler.setLevel(logging.INFO)
-
-# формат логов
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-
+BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR = setup_paths()
+logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
 def create_coll(client, collection_name):
     collections = client.get_collections().collections

@@ -1,29 +1,7 @@
+from logger_init import setup_paths, setup_logging
 
-import datetime
-import logging
-import sys
-from pathlib import Path
-from log_output import Tee
-from load_config import load_config
-
-config = load_config()
-BASE_DIR = Path(config["paths"]["base_dir"])
-LOGS_DIR = BASE_DIR / config["paths"]["logs_dir"]
-GRAPHS_DIR = BASE_DIR / config["paths"]["graphs_dir"]
-OUTPUT_DIR = BASE_DIR / config["paths"]["output_dir"]
-
-
-timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-sys.stdout = Tee(f"{OUTPUT_DIR}/log_{timestamp}.txt")
-# логгирование
-logger = logging.getLogger('bench')
-logger.setLevel(logging.INFO)
-logger.propagate = False
-file_handler = logging.FileHandler(f'{LOGS_DIR}/bench.log')
-file_handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
+BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR = setup_paths()
+logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
 def init_results(top_k_values):
     return {
