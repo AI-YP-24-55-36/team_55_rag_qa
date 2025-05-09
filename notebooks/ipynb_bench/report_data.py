@@ -1,6 +1,6 @@
 from logger_init import setup_paths, setup_logging
 
-BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR = setup_paths()
+BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
 logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
 def init_results(top_k_values):

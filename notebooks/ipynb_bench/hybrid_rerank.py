@@ -23,29 +23,11 @@ from qdrant_client.models import (
 )
 
 from tqdm import tqdm
-from log_output import Tee
-from load_config import load_config
+from logger_init import setup_paths, setup_logging
 
-config = load_config()
-BASE_DIR = Path(config["paths"]["base_dir"])
-LOGS_DIR = BASE_DIR / config["paths"]["logs_dir"]
-GRAPHS_DIR = BASE_DIR / config["paths"]["graphs_dir"]
-OUTPUT_DIR = BASE_DIR / config["paths"]["output_dir"]
-EMBEDDINGS_DIR = BASE_DIR / config["paths"]["embeddings_dir"]
-timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-sys.stdout = Tee(f"{OUTPUT_DIR}/log_{timestamp}.txt")
 
-logger = logging.getLogger('hybrid')
-logger.setLevel(logging.INFO)
-logger.propagate = False
-
-file_handler = logging.FileHandler(f'{LOGS_DIR}/hybrid.log')
-file_handler.setLevel(logging.INFO)
-
-# формат логов
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
+BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
+logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
 # модель для реранкинга
 reranker_model = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L-2-v2")
@@ -96,7 +78,7 @@ def create_hybrid_collection(client, collection_name):
     logger.info(f"Создана коллекция {collection_name}, готова к заполнению")
     print(f"Создана коллекция {collection_name}, готова к заполнению")
 
-dense_embeddings = np.memmap('embeddings/dense_embeddings.memmap', dtype='float32', mode='r').reshape(-1, 768)
+dense_embeddings = np.memmap('embeddings/dense_tas_b.memmap', dtype='float32', mode='r').reshape(-1, 768)
 colbert_embeddings = np.memmap('embeddings/colbert_embeddings.memmap', dtype='float32', mode='r').reshape(-1, 256, 128)
 with open('embeddings/sparse_embeddings.pkl', 'rb') as f:
     sparse_embeddings = pickle.load(f)
@@ -159,6 +141,8 @@ def upload_hybrid_data(client, collection_name: str, data):
         collection_name=collection_name,
         optimizer_config=models.OptimizersConfigDiff(indexing_threshold=5000),
     )
+
+
 
 
 #  фунция загрузки моделей для создания эмбеддингов тестовых запросов

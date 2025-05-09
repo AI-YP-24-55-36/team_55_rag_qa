@@ -1,5 +1,6 @@
 import sys
 
+
 class Tee:
     def __init__(self, filename):
         self.terminal = sys.stdout

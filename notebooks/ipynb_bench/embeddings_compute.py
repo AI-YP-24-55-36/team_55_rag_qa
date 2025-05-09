@@ -2,64 +2,82 @@ import numpy as np
 from tqdm import tqdm
 from fastembed import SparseTextEmbedding, LateInteractionTextEmbedding
 from beir.retrieval.models import SentenceBERT
-import logging
-from pathlib import Path
 import pickle
-from load_config import load_config
 from read_data_from_csv import read_data
+from logger_init import setup_paths, setup_logging
 
-config = load_config()
+BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
+logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
-BASE_DIR = Path(config["paths"]["base_dir"])
-LOGS_DIR = BASE_DIR / config["paths"]["logs_dir"]
-EMBEDDINGS_DIR = BASE_DIR / config["paths"]["embeddings_dir"]
+'''
+В качестве dense модели берем msmarco-distilbert-base-tas-b
+Метод предложен в статье Sbert.net - TAS-B: Improving Dense Retrieval with Token-Averaged Embeddings (https://www.sbert.net/examples/research/tas-b/README.html), 
+отличия от стандартного подхода:
+Вместо того чтобы использовать только [CLS] токен как эмбеддинг предложения (что часто делается в BERT), TAS-B усредняет эмбеддинги всех токенов.
+Это даёт более устойчивые и качественные представления для retrieval-задач.
+Повышает эффективность и точность dense retrieval по сравнению с другими способами.
 
-logger = logging.getLogger('embed')
-logger.setLevel(logging.INFO)
-logger.propagate = False
+Семантический поиск по большим коллекциям документов
+Вопрос - ответные системы(QA)
+Ранжирование документов
+Поиск по базе знаний
+'''
 
-file_handler = logging.FileHandler(f'{LOGS_DIR}/embed.log')
-file_handler.setLevel(logging.INFO)
-
-# Форматирование логов
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
 
 def load_embedding_models():
     bm25_model = SparseTextEmbedding("Qdrant/bm25")
-    dense_model = SentenceBERT("msmarco-distilbert-base-tas-b")
     colbert_model = LateInteractionTextEmbedding("colbert-ir/colbertv2.0")
-    return bm25_model, dense_model, colbert_model
 
-bm25_model, dense_model, colbert_model = load_embedding_models()
+    # список dense моделей
+    dense_models = {
+        "tas_b": SentenceBERT("msmarco-distilbert-base-tas-b"),  # 768
+        "all_minilm": SentenceBERT("sentence-transformers/all-MiniLM-L6-v2"),  # 384
+        "msmarco_minilm": SentenceBERT("sentence-transformers/msmarco-MiniLM-L-6-v3"),  # 384
+        "msmarco_roberta_ance": SentenceBERT("sentence-transformers/msmarco-roberta-base-ance-firstp"),  # 768
+    }
+
+    return bm25_model, colbert_model, dense_models
 
 
-def build_embeddings(item, bm25_model, dense_model, colbert_model):
+def build_embeddings(item, bm25_model, colbert_model, dense_models):
     text = item["context"]
+
     # BM25 sparse vector
     sparse_vector = list(bm25_model.query_embed(text))
     sparse_embedding = sparse_vector[0] if sparse_vector else None
-    # Dense vector
-    # dense_embedding = dense_model.encode(text).tolist()
-    dense_embedding = dense_model.encode_corpus([{"text": text}], convert_to_tensor=False)[0]
+
+    # Dense vectors (все модели)
+    dense_embeddings = {}
+    for model_name, model in dense_models.items():
+        emb = model.encode_corpus([{"text": text}], convert_to_tensor=False)[0]
+        dense_embeddings[model_name] = emb
+
     # ColBERT vector
     colbert_embedding = list(colbert_model.embed(text))[0]
 
+    return sparse_embedding, dense_embeddings, colbert_embedding
 
-    return sparse_embedding, dense_embedding, colbert_embedding
 
 def generate_emb():
-    sparce, dense, colbert = [], [], []
-    data_for_db, data_df = read_data(limit=11000)
+    sparse_list = []
+    colbert_list = []
+    dense_dict = {name: [] for name in dense_models}
+
+    data_for_db, data_df = read_data(limit=10)
 
     for item in tqdm(data_for_db):
-        sparse_embedding, dense_embedding, colbert_embedding = build_embeddings(item, bm25_model, dense_model, colbert_model)
-        sparce.append(sparse_embedding)
-        dense.append(dense_embedding)
-        colbert.append(colbert_embedding)
+        sparse_embedding, dense_embeddings, colbert_embedding = build_embeddings(
+            item, bm25_model, colbert_model, dense_models
+        )
 
-    return sparce, dense, colbert
+        sparse_list.append(sparse_embedding)
+        colbert_list.append(colbert_embedding)
+
+        for name, emb in dense_embeddings.items():
+            dense_dict[name].append(emb)
+
+    return sparse_list, dense_dict, colbert_list
+
 
 def pad_to_fixed_length(matrix, target_len=512):
     current_len = matrix.shape[0]
@@ -75,37 +93,41 @@ def pad_to_fixed_length(matrix, target_len=512):
     else:
         return matrix
 
+
 def memmap_emb(
-    dense_output_path=f'{EMBEDDINGS_DIR}/dense_embeddings.memmap',
-    colbert_output_path=f'{EMBEDDINGS_DIR}/colbert_embeddings.memmap',
-    sparse_output_path=f'{EMBEDDINGS_DIR}/sparse_embeddings.pkl',
-    colbert_tokens=256,  # фиксированное количество токенов
-    dtype='float32'
+        output_dir=EMBEDDINGS_DIR,
+        colbert_tokens=256,
+        dtype='float32'
 ):
-    # Получаем эмбеддинги
-    sparse, dense, colbert = generate_emb()
+    sparse, dense_dict, colbert = generate_emb()
 
-    num_texts = len(dense)
-    dense_dim = len(dense[0])
+    num_texts = len(colbert)
     colbert_shape = colbert[0].shape
-
     tokens, colbert_dim = colbert_shape
 
-    print(f"💾 Сохраняем dense эмбеддинги в {dense_output_path}...")
-    dense_memmap = np.memmap(dense_output_path, dtype=dtype, mode='w+', shape=(num_texts, dense_dim))
-    for idx, vector in enumerate(dense):
-        dense_memmap[idx] = vector
-    del dense_memmap  # flush
+    # Сохраняем dense эмбеддинги всех моделей
+    for model_name, dense_vectors in dense_dict.items():
+        dense_dim = len(dense_vectors[0])
+        dense_output_path = f"{output_dir}/dense_{model_name}.memmap"
+        print(f"💾 Сохраняем dense эмбеддинги ({model_name}) в {dense_output_path}...")
 
-    print(f"💾 Сохраняем colbert эмбеддинги в {colbert_output_path}")
+        dense_memmap = np.memmap(dense_output_path, dtype=dtype, mode='w+', shape=(num_texts, dense_dim))
+        for idx, vector in enumerate(dense_vectors):
+            dense_memmap[idx] = vector
+        del dense_memmap
+
+    # ColBERT
+    colbert_output_path = f"{output_dir}/colbert_embeddings.memmap"
+    print(f"💾 Сохраняем ColBERT эмбеддинги в {colbert_output_path}...")
     colbert_memmap = np.memmap(colbert_output_path, dtype=dtype, mode='w+',
                                shape=(num_texts, colbert_tokens, colbert_dim))
     for idx, matrix in enumerate(colbert):
         padded_matrix = pad_to_fixed_length(matrix, target_len=colbert_tokens)
-        padded_matrix = pad_to_fixed_length(matrix, target_len=colbert_tokens)
         colbert_memmap[idx] = padded_matrix
     del colbert_memmap
 
+    # Sparse
+    sparse_output_path = f"{output_dir}/sparse_embeddings.pkl"
     print(f"💾 Сохраняем sparse эмбеддинги (BM25) в {sparse_output_path}...")
     with open(sparse_output_path, 'wb') as f:
         pickle.dump(sparse, f)
@@ -114,4 +136,5 @@ def memmap_emb(
 
 
 if __name__ == '__main__':
+    bm25_model, colbert_model, dense_models = load_embedding_models()
     memmap_emb()

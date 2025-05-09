@@ -5,7 +5,7 @@ from report_data import (init_results, evaluate_accuracy,
                          calculate_speed_stats, compute_final_accuracy,
                          log_topk_accuracy, log_speed_stats)
 
-BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR = setup_paths()
+BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
 logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
 def run_query(client, collection_name, query_vector, search_params, limit):

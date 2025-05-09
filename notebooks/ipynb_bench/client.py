@@ -1,8 +1,8 @@
 import argparse
-import os
 import time
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer
+from beir.retrieval.models import SentenceBERT
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, SearchParams, HnswConfigDiff
 from read_data_from_csv import read_data
@@ -15,10 +15,9 @@ from visualisation import visualize_results_rerank
 from sparse_bm25 import upload_bm25_data, benchmark_bm25
 from report_data import print_speed_results, print_accuracy_results
 
-
-BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR = setup_paths()
+BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
 logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
+# os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 def parse_args():
@@ -34,7 +33,7 @@ def parse_args():
     # Параметры модели и поиска
     parser.add_argument('--model-names', nargs='+',
                         default=[
-                            'all-MiniLM-L6-v2', 'paraphrase-multilingual-MiniLM-L12-v2', 'BM25'],
+                            'all-MiniLM-L6-v2', 'paraphrase-multilingual-MiniLM-L12-v2', 'msmarco-roberta-base-ance-firstp', 'BM25'],
                         help='Список моделей для сравнения, включая BM25')
     parser.add_argument('--vector-size', type=int, default=384,
                         help='Размер векторов эмбеддингов')
@@ -77,6 +76,7 @@ def create_collection(client, collection_name, vector_size, distance=Distance.CO
         }
     )
     logger.info(f"Коллекция {collection_name} создана")
+
 
 def upload_data(client, collection_name, data, model, batch_size=100):
     """Загрузка данных в Qdrant"""
@@ -166,7 +166,8 @@ def benchmark_dense_models(client, models_to_compare, model_instances, search_al
 
     return speed_results, accuracy_results
 
-def benchmark_bm25_model(client, base_collection_name, data_for_db, data_df, search_algorithms, args):
+
+def benchmark_bm25_model(client, base_collection_name, data_for_db, data_df, search_algorithms):
     print("\n" + "=" * 80)
     print("🔍 ОЦЕНКА ПРОИЗВОДИТЕЛЬНОСТИ BM25")
     print("=" * 80)
@@ -239,6 +240,7 @@ def initialize_models(all_models, args, client, data_for_db):
 
     return models_to_compare, bm25_model, model_instances, search_algorithms
 
+
 def run_full_benchmark(client, all_models, args, data_for_db, data_df):
     models_to_compare, bm25_model, model_instances, search_algorithms = initialize_models(all_models, args,
                                                                                           client, data_for_db)
@@ -255,9 +257,7 @@ def run_full_benchmark(client, all_models, args, data_for_db, data_df):
     # Бенчмарк для BM25
     bm25_results = None
     if bm25_model:
-        bm25_results = benchmark_bm25_model(
-            client, args.collection_name, data_for_db, data_df, search_algorithms, args
-        )
+        bm25_results = benchmark_bm25_model(client, args.collection_name, data_for_db, data_df, search_algorithms)
 
     # Вывод результатов
     print_speed_results(speed_results, bm25_results, models_to_compare)
@@ -283,9 +283,9 @@ def run_full_benchmark(client, all_models, args, data_for_db, data_df):
 def main():
     args = parse_args()
     hybrid = args.hybrid
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🚀 ЗАПУСК БЕНЧМАРКА RAG СИСТЕМЫ")
-    print("="*80)
+    print("=" * 80)
     logger.info("Запуск бенчмарка RAG системы")
 
     # инициализация клиента Qdrant
