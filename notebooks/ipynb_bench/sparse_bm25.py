@@ -1,12 +1,12 @@
 import time
 from tqdm import tqdm
+import pickle
 from fastembed import SparseTextEmbedding
 from qdrant_client import models
 from logger_init import setup_paths, setup_logging
 from report_data import (init_results, evaluate_accuracy,
                          calculate_speed_stats, compute_final_accuracy,
                          log_topk_accuracy, log_speed_stats)
-
 
 BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
 logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
@@ -36,22 +36,23 @@ def create_coll(client, collection_name):
     logger.info(f"Коллекция {collection_name} создана с поддержкой BM25")
 
 
-
 def upload_bm25_data(client, collection_name, data):
-    """Загрузка данных в Qdrant с использованием встроенного BM25"""
-
-    logger.info(f"Загрузка {len(data)} документов в коллекцию {collection_name} с использованием BM25")
-    # проверка, существует ли коллекция
+    """
+    Загрузка данных в Qdrant с использованием предрассчитанных BM25 эмбеддингов.
+    """
+    logger.info(f"Загрузка {len(data)} документов в коллекцию {collection_name} с использованием BM25 (из файла)")
     create_coll(client, collection_name)
-    # инициализация модели
-    bm25_embedding_model = SparseTextEmbedding("Qdrant/bm25")
+
+    # загрузка эмбеддингов из файла
+    with open('embeddings/sparse_embeddings.pkl', 'rb') as f:
+        sparse_embeddings = pickle.load(f)
+
+    if len(sparse_embeddings) != len(data):
+        raise ValueError("Количество эмбеддингов не совпадает с количеством документов")
 
     points = []
-    # создание поинтов
-    for item in data:
-        vector = list(bm25_embedding_model.query_embed(item["context"]))
-        if vector:
-            sparse_embedding = vector[0]
+    for item, sparse_embedding in zip(data, sparse_embeddings):
+        if sparse_embedding is not None:
             points.append(
                 models.PointStruct(
                     id=item["id"],
@@ -71,7 +72,7 @@ def upload_bm25_data(client, collection_name, data):
         points=points
     )
 
-    logger.info(f"Загрузка данных завершена для коллекции {collection_name}")
+    logger.info(f"✅ Загрузка данных завершена для коллекции {collection_name}")
 
 
 def prepare_sparse_vector(model, text):
@@ -80,6 +81,7 @@ def prepare_sparse_vector(model, text):
         "indices": vector.indices.tolist(),
         "values": vector.values.tolist()
     }
+
 
 def search_bm25(client, collection_name, sparse_vector, limit, search_params):
     start_time = time.time()
@@ -95,6 +97,7 @@ def search_bm25(client, collection_name, sparse_vector, limit, search_params):
     )
     end_time = time.time()
     return results, end_time - start_time
+
 
 def benchmark_bm25(client, collection_name, test_data, search_params=None, top_k_values=[1, 3]):
     print(f"\n🔍 Запуск оценки производительности BM25 для коллекции '{collection_name}'")
@@ -128,7 +131,6 @@ def benchmark_bm25(client, collection_name, test_data, search_params=None, top_k
     compute_final_accuracy(results)
     log_topk_accuracy(results, top_k_values)
     log_speed_stats(results)
-
 
     print(f"✅ Оценка производительности BM25 завершена для коллекции '{collection_name}'")
     return results

@@ -33,7 +33,7 @@ def parse_args():
     # Параметры модели и поиска
     parser.add_argument('--model-names', nargs='+',
                         default=[
-                            'all-MiniLM-L6-v2', 'paraphrase-multilingual-MiniLM-L12-v2', 'msmarco-roberta-base-ance-firstp', 'BM25'],
+                            'all-MiniLM-L6-v2', 'msmarco-MiniLM-L-6-v3', 'msmarco-roberta-base-ance-firstp', 'BM25'],
                         help='Список моделей для сравнения, включая BM25')
     parser.add_argument('--vector-size', type=int, default=384,
                         help='Размер векторов эмбеддингов')

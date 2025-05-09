@@ -90,7 +90,7 @@ def build_point_from_files(
     dense_embeddings,
     colbert_embeddings
 ):
-    # Получаем эмбеддинги по индексу из файлов memmap
+    # pfзагрузка эмбеддингов по индексу из файлов memmap
     sparse_embedding = sparse_embeddings[idx]
     dense_embedding = dense_embeddings[idx].tolist()
     colbert_embedding = colbert_embeddings[idx].tolist()

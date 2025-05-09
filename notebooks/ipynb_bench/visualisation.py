@@ -1,39 +1,11 @@
-import datetime
-import logging
-import sys
 import time
-from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
+from pathlib import Path
+from logger_init import setup_paths, setup_logging
 
-from log_output import Tee
-from load_config import load_config
-
-config = load_config()
-BASE_DIR = Path(config["paths"]["base_dir"])
-LOGS_DIR = BASE_DIR / config["paths"]["logs_dir"]
-GRAPHS_DIR = BASE_DIR / config["paths"]["graphs_dir"]
-OUTPUT_DIR = BASE_DIR / config["paths"]["output_dir"]
-
-
-timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-sys.stdout = Tee(f"{OUTPUT_DIR}/log_{timestamp}.txt")
-
-logger = logging.getLogger('bench')
-logger.setLevel(logging.INFO)
-logger.propagate = False
-
-file_handler = logging.FileHandler(f'{LOGS_DIR}/bench.log')
-file_handler.setLevel(logging.INFO)
-
-# Форматирование логов
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-
-# Добавление обработчиков к логгеру
-logger.addHandler(file_handler)
-
+BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
+logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
 def visualize_results(speed_results, accuracy_results, bm25_results=None, title_prefix="Результаты бенчмарка", save_dir="./logs/graphs"):
     print(f"\n📊 Создание визуализаций результатов...")
