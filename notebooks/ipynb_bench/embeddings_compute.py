@@ -31,9 +31,9 @@ def load_embedding_models():
     # список dense моделей
     dense_models = {
         "tas_b": SentenceBERT("msmarco-distilbert-base-tas-b"),  # 768
-        "all_minilm": SentenceBERT("sentence-transformers/all-MiniLM-L6-v2"),  # 384
-        "msmarco_minilm": SentenceBERT("sentence-transformers/msmarco-MiniLM-L-6-v3"),  # 384
-        "msmarco_roberta_ance": SentenceBERT("sentence-transformers/msmarco-roberta-base-ance-firstp"),  # 768
+        "all-MiniLM-L6-v2": SentenceBERT("sentence-transformers/all-MiniLM-L6-v2"),  # 384
+        "msmarco-MiniLM-L-6-v3": SentenceBERT("sentence-transformers/msmarco-MiniLM-L-6-v3"),  # 384
+        "msmarco-roberta-base-ance-firstp": SentenceBERT("sentence-transformers/msmarco-roberta-base-ance-firstp"),  # 768
     }
 
     return bm25_model, colbert_model, dense_models
@@ -63,7 +63,7 @@ def generate_emb():
     colbert_list = []
     dense_dict = {name: [] for name in dense_models}
 
-    data_for_db, data_df = read_data(limit=10)
+    data_for_db, data_df = read_data(limit=11000)
 
     for item in tqdm(data_for_db):
         sparse_embedding, dense_embeddings, colbert_embedding = build_embeddings(
@@ -108,7 +108,7 @@ def memmap_emb(
     # Сохраняем dense эмбеддинги всех моделей
     for model_name, dense_vectors in dense_dict.items():
         dense_dim = len(dense_vectors[0])
-        dense_output_path = f"{output_dir}/dense_{model_name}.memmap"
+        dense_output_path = f"{output_dir}/{model_name}.memmap"
         print(f"💾 Сохраняем dense эмбеддинги ({model_name}) в {dense_output_path}...")
 
         dense_memmap = np.memmap(dense_output_path, dtype=dtype, mode='w+', shape=(num_texts, dense_dim))

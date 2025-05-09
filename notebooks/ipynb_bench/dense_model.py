@@ -1,0 +1,121 @@
+import time
+from tqdm import tqdm
+import numpy as np
+from logger_init import setup_paths, setup_logging
+from qdrant_client.models import (
+    Distance,
+    VectorParams,
+    PointStruct
+)
+
+BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
+logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
+
+MODEL_VECTOR_SIZES = {
+    'msmarco-roberta-base-ance-firstp': 768,
+    'all-MiniLM-L6-v2': 384,
+    'msmarco-MiniLM-L-6-v3' : 384,
+}
+
+
+def create_collection(client, collection_name, vector_size, distance=Distance.COSINE):
+    """Создание коллекции в Qdrant"""
+    collections = client.get_collections().collections
+    collection_names = [collection.name for collection in collections]
+
+    if collection_name in collection_names:
+        client.delete_collection(collection_name)
+        logger.info(f"Коллекция {collection_name} удалена")
+
+    client.create_collection(
+        collection_name=collection_name,
+        vectors_config={
+            "context": VectorParams(size=vector_size, distance=distance)
+        }
+    )
+    logger.info(f"Коллекция {collection_name} создана")
+
+def build_point_from_memmap(item, idx, vectors):
+    vector = vectors[idx].tolist()
+    return PointStruct(
+        id=item["id"],
+        payload=item,
+        vector={
+            "context": vector
+        }
+    )
+
+
+def upload_points_in_batches(client, collection_name, points, batch_size=50):
+    for i in range(0, len(points), batch_size):
+        batch = points[i:i + batch_size]
+        client.upload_points(
+            collection_name=collection_name,
+            points=batch,
+        )
+        print(f"Загружено {i + len(batch)} из {len(points)} документов")
+
+def upload_dense_data(client, collection_name, data, dim, embedding_name: str, batch_size=1,
+                      embedding_dir="embeddings", dtype='float32'):
+    """
+    Загрузка dense эмбеддингов из .memmap файла и отправка в Qdrant.
+    Использует build_point_from_memmap и upload_points_in_batches.
+    """
+
+    logger.info(f"Загрузка {len(data)} документов в коллекцию {collection_name} с эмбеддингами {embedding_name}")
+    start_time = time.time()
+
+    memmap_path = f"{embedding_dir}/{embedding_name}.memmap"
+
+    # Определяем размерность вектора
+    sample_vector = np.memmap(memmap_path, dtype=dtype, mode='r')
+
+    # Загружаем все векторы как (num_items, dim)
+    vectors = np.memmap(memmap_path, dtype=dtype, mode='r').reshape(-1, dim)
+    print(dim)
+    print(vectors.shape)
+
+    points = []
+    progress_bar = tqdm(total=len(data), desc="Подготовка точек", unit="документ")
+
+    for idx, item in enumerate(data):
+        point = build_point_from_memmap(item, idx, vectors)
+        points.append(point)
+        progress_bar.update(1)
+
+    progress_bar.close()
+
+    logger.info(f"🚀 Загрузка {len(points)} точек в Qdrant...")
+    upload_points_in_batches(client, collection_name, points, batch_size=batch_size)
+
+    elapsed_time = time.time() - start_time
+    logger.info(f"✅ Загрузка завершена за {elapsed_time:.2f} секунд")
+    print(f"✅ Загрузка завершена за {elapsed_time:.2f} секунд")
+
+
+
+def upload_dense_model_collections(client, models_to_compare, args, data_for_db):
+    """
+    Создаёт коллекции и загружает эмбеддинги из .memmap файлов для каждой модели.
+    """
+    for model_name in models_to_compare:
+        collection_name = f"{args.collection_name}_{model_name.replace('-', '_')}"
+        vector_size = MODEL_VECTOR_SIZES.get(model_name)
+
+        if vector_size is None:
+            logger.warning(f"⚠️ Модель {model_name} не найдена ... Пропуск.")
+            continue
+
+        logger.info(f"\n📦 Создание коллекции: {collection_name}")
+        create_collection(client, collection_name, vector_size)
+
+        logger.info(f"🚀 Загрузка эмбеддингов для модели: {model_name}")
+        upload_dense_data(
+            client=client,
+            collection_name=collection_name,
+            data=data_for_db,
+            dim=vector_size,
+            embedding_name=model_name,
+            batch_size=args.batch_size,
+            dtype='float32'
+        )

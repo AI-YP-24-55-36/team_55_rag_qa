@@ -1,16 +1,10 @@
-import datetime
-import logging
-import sys
 import time
-from pathlib import Path
 import pickle
-
 import numpy as np
 from fastembed import SparseTextEmbedding, LateInteractionTextEmbedding
 from beir.retrieval.models import SentenceBERT
 from sentence_transformers import CrossEncoder
 # from fastembed.rerank.cross_encoder import TextCrossEncoder
-
 from qdrant_client import models
 from qdrant_client.models import (
     Distance,
@@ -19,7 +13,8 @@ from qdrant_client.models import (
     MultiVectorConfig,
     SparseIndexParams,
     SparseVectorParams,
-    VectorParams
+    VectorParams,
+    PointStruct
 )
 
 from tqdm import tqdm
@@ -78,7 +73,7 @@ def create_hybrid_collection(client, collection_name):
     logger.info(f"Создана коллекция {collection_name}, готова к заполнению")
     print(f"Создана коллекция {collection_name}, готова к заполнению")
 
-dense_embeddings = np.memmap('embeddings/dense_tas_b.memmap', dtype='float32', mode='r').reshape(-1, 768)
+dense_embeddings = np.memmap('embeddings/tas_b.memmap', dtype='float32', mode='r').reshape(-1, 768)
 colbert_embeddings = np.memmap('embeddings/colbert_embeddings.memmap', dtype='float32', mode='r').reshape(-1, 256, 128)
 with open('embeddings/sparse_embeddings.pkl', 'rb') as f:
     sparse_embeddings = pickle.load(f)
@@ -90,12 +85,12 @@ def build_point_from_files(
     dense_embeddings,
     colbert_embeddings
 ):
-    # pfзагрузка эмбеддингов по индексу из файлов memmap
+    # загрузка эмбеддингов по индексу из файлов memmap
     sparse_embedding = sparse_embeddings[idx]
     dense_embedding = dense_embeddings[idx].tolist()
     colbert_embedding = colbert_embeddings[idx].tolist()
 
-    return models.PointStruct(
+    return PointStruct(
         id=item["id"],
         payload=item,
         vector={
@@ -139,7 +134,7 @@ def upload_hybrid_data(client, collection_name: str, data):
     # запуск индексации
     client.update_collection(
         collection_name=collection_name,
-        optimizer_config=models.OptimizersConfigDiff(indexing_threshold=5000),
+        optimizer_config=OptimizersConfigDiff(indexing_threshold=5000),
     )
 
 

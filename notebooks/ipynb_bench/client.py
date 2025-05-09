@@ -1,12 +1,11 @@
 import argparse
 import time
 from tqdm import tqdm
+import numpy as np
 from sentence_transformers import SentenceTransformer
-from beir.retrieval.models import SentenceBERT
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, SearchParams, HnswConfigDiff
+from qdrant_client.http.models import Distance, SearchParams, HnswConfigDiff, PointStruct
 from read_data_from_csv import read_data
-from cache_embed import generate_and_save_embeddings
 from logger_init import setup_paths, setup_logging
 from visualisation import visualize_results
 from bench import benchmark_performance
@@ -14,6 +13,7 @@ from hybrid_rerank import print_comparison, run_bench_hybrid
 from visualisation import visualize_results_rerank
 from sparse_bm25 import upload_bm25_data, benchmark_bm25
 from report_data import print_speed_results, print_accuracy_results
+from dense_model import upload_dense_model_collections
 
 BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
 logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
@@ -33,7 +33,11 @@ def parse_args():
     # Параметры модели и поиска
     parser.add_argument('--model-names', nargs='+',
                         default=[
-                            'all-MiniLM-L6-v2', 'msmarco-MiniLM-L-6-v3', 'msmarco-roberta-base-ance-firstp', 'BM25'],
+                            "all-MiniLM-L6-v2" ,
+                            "msmarco-MiniLM-L-6-v3",
+                            "msmarco-roberta-base-ance-firstp",
+                            'BM25'],
+
                         help='Список моделей для сравнения, включая BM25')
     parser.add_argument('--vector-size', type=int, default=384,
                         help='Размер векторов эмбеддингов')
@@ -56,91 +60,61 @@ def parse_args():
     return parser.parse_args()
 
 
-def create_collection(client, collection_name, vector_size, distance=Distance.COSINE):
-    """Создание коллекции в Qdrant"""
-    collections = client.get_collections().collections
-    collection_names = [collection.name for collection in collections]
+# def benchmark_dense_models(client, models_to_compare, model_instances, search_algorithms, args, data_for_db, data_df):
+#     speed_results = {}
+#     accuracy_results = {}
+#
+#     for model_name in models_to_compare:
+#         model = model_instances[model_name]
+#         collection_name = f"{args.collection_name}_{model_name.replace('-', '_')}"
+#         create_collection(client, collection_name, args.vector_size)
+#         upload_data(client, collection_name, data_for_db, model, args.batch_size)
+#
+#
+#         speed_results[model_name] = {}
+#         accuracy_results[model_name] = {}
+#
+#         for algo_name, search_params in search_algorithms.items():
+#             logger.info(f"Оценка алгоритма {algo_name} с моделью {model_name}")
+#             print(f"\n🔍 Оценка алгоритма {algo_name} с моделью {model_name}")
+#
+#             if algo_name.startswith("HNSW"):
+#                 client.update_collection(
+#                     collection_name=collection_name,
+#                     hnsw_config=HnswConfigDiff(
+#                         m=args.hnsw_m,
+#                         ef_construct=args.ef_construct,
+#                     )
+#                 )
+#
+#             benchmark_results = benchmark_performance(
+#                 client=client,
+#                 collection_name=collection_name,
+#                 test_data=data_df,
+#                 model=model,
+#                 search_params=search_params,
+#                 top_k_values=[1, 3]
+#             )
+#
+#             speed_results[model_name][algo_name] = benchmark_results["speed"]
+#             accuracy_results[model_name][algo_name] = benchmark_results["accuracy"]
+#
+#     return speed_results, accuracy_results
 
-    if collection_name in collection_names:
-        client.delete_collection(collection_name)
-        logger.info(f"Коллекция {collection_name} удалена")
-
-    # Создаем коллекцию с именованными векторами
-    client.create_collection(
-        collection_name=collection_name,
-        vectors_config={
-            "context": {
-                "size": vector_size,
-                "distance": distance
-            }
-        }
-    )
-    logger.info(f"Коллекция {collection_name} создана")
-
-
-def upload_data(client, collection_name, data, model, batch_size=100):
-    """Загрузка данных в Qdrant"""
-    logger.info(
-        f"Загрузка {len(data)} документов в коллекцию {collection_name}")
-    start_time = time.time()
-    progress_bar = tqdm(
-        total=len(data), desc="Загрузка данных", unit="документ")
-    # загрузка данных батчами
-    for i in range(0, len(data), batch_size):
-        batch = data[i:i + batch_size]
-        texts = [item["context"] for item in batch]
-
-        # Генерация эмбеддингов для батча
-        args = parse_args()
-        vectors = generate_and_save_embeddings(
-            texts=texts,
-            model=model,
-            array_name=f'{collection_name}+{args.limit}',
-            save_dir="embeddings"
-        )
-
-        points = []
-        for j, (item, vector) in enumerate(zip(batch, vectors)):
-            points.append({
-                "id": item["id"],
-                "vector": {
-                    "context": vector.tolist()
-                },
-                "payload": item
-            })
-
-        client.upsert(
-            collection_name=collection_name,
-            points=points
-        )
-
-        progress_bar.update(len(batch))
-        if (i + batch_size) % 1000 == 0 or (i + batch_size) >= len(data):
-            logger.info(
-                f"Загружено {min(i + batch_size, len(data))}/{len(data)} документов")
-
-    # Закрываем прогресс-бар
-    progress_bar.close()
-    elapsed_time = time.time() - start_time
-    logger.info(f"Загрузка данных завершена за {elapsed_time:.2f} секунд")
-    print(f"✅ Загрузка данных завершена за {elapsed_time:.2f} секунд")
-
-
-def benchmark_dense_models(client, models_to_compare, model_instances, search_algorithms, args, data_for_db, data_df):
+def evaluate_dense_models(client, models_to_compare, search_algorithms, args, data_df):
+    """
+    Выполняет бенчмарк уже загруженных dense-моделей.
+    """
     speed_results = {}
     accuracy_results = {}
 
     for model_name in models_to_compare:
-        model = model_instances[model_name]
         collection_name = f"{args.collection_name}_{model_name.replace('-', '_')}"
-        create_collection(client, collection_name, args.vector_size)
-        upload_data(client, collection_name, data_for_db, model, args.batch_size)
-
         speed_results[model_name] = {}
         accuracy_results[model_name] = {}
 
         for algo_name, search_params in search_algorithms.items():
-            logger.info(f"Оценка алгоритма {algo_name} с моделью {model_name}")
+            logger.info(f"🔍 Оценка алгоритма {algo_name} с моделью {model_name}")
             print(f"\n🔍 Оценка алгоритма {algo_name} с моделью {model_name}")
 
             if algo_name.startswith("HNSW"):
@@ -156,7 +130,7 @@ def benchmark_dense_models(client, models_to_compare, model_instances, search_al
                 client=client,
                 collection_name=collection_name,
                 test_data=data_df,
-                model=model,
+                model=None,  # модель не используется, т.к. эмбеддинги уже загружены
                 search_params=search_params,
                 top_k_values=[1, 3]
             )
@@ -166,6 +140,59 @@ def benchmark_dense_models(client, models_to_compare, model_instances, search_al
 
     return speed_results, accuracy_results
 
+# def benchmark_dense_models(client, models_to_compare, search_algorithms, args, data_for_db, data_df):
+#     """
+#     Бенчмарк dense моделей с использованием заранее рассчитанных .memmap эмбеддингов.
+#     """
+#     speed_results = {}
+#     accuracy_results = {}
+#
+#     for model_name in models_to_compare:
+#         collection_name = f"{args.collection_name}_{model_name.replace('-', '_')}"
+#         if model_name == 'msmarco-roberta-base-ance-firstp':
+#             vector_size = 768
+#         else:  vector_size = 384
+#         logger.info(f"\n📦 Создание коллекции: {collection_name}")
+#         create_collection(client, collection_name, vector_size)
+#
+#         # ⚠️ Загрузка эмбеддингов из .memmap
+#         upload_data_from_memmap(
+#             client=client,
+#             collection_name=collection_name,
+#             data=data_for_db,
+#             embedding_name=model_name,  # должно соответствовать имени файла: dense_{model_name}.memmap
+#             batch_size=args.batch_size
+#         )
+#
+#         speed_results[model_name] = {}
+#         accuracy_results[model_name] = {}
+#
+#         for algo_name, search_params in search_algorithms.items():
+#             logger.info(f"🔍 Оценка алгоритма {algo_name} с моделью {model_name}")
+#             print(f"\n🔍 Оценка алгоритма {algo_name} с моделью {model_name}")
+#
+#             if algo_name.startswith("HNSW"):
+#                 client.update_collection(
+#                     collection_name=collection_name,
+#                     hnsw_config=HnswConfigDiff(
+#                         m=args.hnsw_m,
+#                         ef_construct=args.ef_construct,
+#                     )
+#                 )
+#
+#             benchmark_results = benchmark_performance(
+#                 client=client,
+#                 collection_name=collection_name,
+#                 test_data=data_df,
+#                 model=None,  # модель не используется, т.к. эмбеддинги уже загружены
+#                 search_params=search_params,
+#                 top_k_values=[1, 3]
+#             )
+#
+#             speed_results[model_name][algo_name] = benchmark_results["speed"]
+#             accuracy_results[model_name][algo_name] = benchmark_results["accuracy"]
+#
+#     return speed_results, accuracy_results
 
 def benchmark_bm25_model(client, base_collection_name, data_for_db, data_df, search_algorithms):
     print("\n" + "=" * 80)
@@ -199,6 +226,8 @@ def benchmark_bm25_model(client, base_collection_name, data_for_db, data_df, sea
         "speed": bm25_speed_results,
         "accuracy": bm25_accuracy_results
     }
+
+
 
 
 def initialize_models(all_models, args, client, data_for_db):
@@ -241,6 +270,42 @@ def initialize_models(all_models, args, client, data_for_db):
     return models_to_compare, bm25_model, model_instances, search_algorithms
 
 
+def run_dense_benchmark(client, all_models, args, data_for_db, data_df):
+    models_to_compare, bm25_model, model_instances, search_algorithms = initialize_models(all_models, args, client, data_for_db)
+
+    speed_results = {}
+    accuracy_results = {}
+    upload_dense_model_collections(client, models_to_compare, args, data_for_db)
+
+    # Бенчмарк для dense моделей
+    if models_to_compare:
+        speed_results, accuracy_results = evaluate_dense_models(
+            client=client,
+            models_to_compare=models_to_compare,
+            search_algorithms=search_algorithms,
+            args=args,
+            data_df=data_df
+        )
+
+    # Вывод результатов
+    print_speed_results(speed_results, models_to_compare)
+    print_accuracy_results(accuracy_results, models_to_compare)
+
+    # Визуализация
+    if models_to_compare:
+        visualize_results(
+            speed_results=speed_results,
+            accuracy_results=accuracy_results,
+            title_prefix="Сравнение производительности RAG системы",
+            save_dir="./logs/graphs"
+        )
+
+    logger.info("Бенчмарк завершен успешно")
+    print("\n" + "=" * 80)
+    print("✅ БЕНЧМАРК ЗАВЕРШЕН УСПЕШНО")
+    print("Графики сохранены в директории ./logs/graphs/")
+    print("=" * 80)
+
 def run_full_benchmark(client, all_models, args, data_for_db, data_df):
     models_to_compare, bm25_model, model_instances, search_algorithms = initialize_models(all_models, args,
                                                                                           client, data_for_db)
@@ -250,8 +315,12 @@ def run_full_benchmark(client, all_models, args, data_for_db, data_df):
 
     # Бенчмарк для dense моделей
     if models_to_compare:
-        speed_results, accuracy_results = benchmark_dense_models(
-            client, models_to_compare, model_instances, search_algorithms, args, data_for_db, data_df
+        speed_results, accuracy_results = evaluate_dense_models(
+            client=client,
+            models_to_compare=models_to_compare,
+            search_algorithms=search_algorithms,
+            args=args,
+            data_df=data_df
         )
 
     # Бенчмарк для BM25
@@ -282,6 +351,7 @@ def run_full_benchmark(client, all_models, args, data_for_db, data_df):
 
 def main():
     args = parse_args()
+    print(args)
     hybrid = args.hybrid
     print("\n" + "=" * 80)
     print("🚀 ЗАПУСК БЕНЧМАРКА RAG СИСТЕМЫ")
@@ -301,11 +371,13 @@ def main():
     if hybrid == 0:
 
         # Получаем список моделей из аргументов командной строки
+
         all_models = args.model_names
         logger.info(f"Выбранные модели для сравнения: {', '.join(all_models)}")
         print(f"🔄 Выбранные модели для сравнения: {', '.join(all_models)}")
 
-        run_full_benchmark(client, all_models, args, data_for_db, data_df)
+        # run_full_benchmark(client, all_models, args, data_for_db, data_df)
+        run_dense_benchmark(client, all_models, args, data_for_db, data_df)
 
     # гибридный поиск в гибридной коллекции
     elif hybrid == 1:

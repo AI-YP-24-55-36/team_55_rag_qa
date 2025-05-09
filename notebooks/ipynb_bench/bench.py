@@ -55,3 +55,5 @@ def benchmark_performance(client, collection_name, test_data, model, search_para
     print(f"✅ Оценка производительности завершена для коллекции '{collection_name}'")
     return results
 
+
+
