@@ -72,9 +72,6 @@ def upload_dense_data(client, collection_name, data, dim, embedding_name: str, b
 
     # Загружаем все векторы как (num_items, dim)
     vectors = np.memmap(memmap_path, dtype=dtype, mode='r').reshape(-1, dim)
-    print(dim)
-    print(vectors.shape)
-
     points = []
     progress_bar = tqdm(total=len(data), desc="Подготовка точек", unit="документ")
 

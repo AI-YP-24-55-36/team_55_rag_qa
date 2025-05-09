@@ -54,7 +54,7 @@ def log_speed_stats(results):
 
 
 
-def print_speed_results(speed_results, bm25_results, models_to_compare):
+def print_speed_results(speed_results, models_to_compare, bm25_results=None):
     print("\n" + "=" * 80)
     print("РЕЗУЛЬТАТЫ ОЦЕНКИ СКОРОСТИ ПОИСКА")
     print("=" * 80)
@@ -77,7 +77,8 @@ def print_speed_results(speed_results, bm25_results, models_to_compare):
             print(f"  Медианное время: {result['median_time'] * 1000:.2f} мс")
             print(f"  Максимальное время: {result['max_time'] * 1000:.2f} мс")
             print(f"  Минимальное время: {result['min_time'] * 1000:.2f} мс")
-def print_accuracy_results(accuracy_results, bm25_results, models_to_compare):
+
+def print_accuracy_results(accuracy_results, models_to_compare, bm25_results=None):
     print("\n" + "=" * 80)
     print("РЕЗУЛЬТАТЫ ОЦЕНКИ ТОЧНОСТИ ПОИСКА")
     print("=" * 80)

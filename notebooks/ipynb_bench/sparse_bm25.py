@@ -35,7 +35,6 @@ def create_coll(client, collection_name):
 
     logger.info(f"Коллекция {collection_name} создана с поддержкой BM25")
 
-
 def upload_bm25_data(client, collection_name, data):
     """
     Загрузка данных в Qdrant с использованием предрассчитанных BM25 эмбеддингов.
@@ -46,9 +45,6 @@ def upload_bm25_data(client, collection_name, data):
     # загрузка эмбеддингов из файла
     with open('embeddings/sparse_embeddings.pkl', 'rb') as f:
         sparse_embeddings = pickle.load(f)
-
-    if len(sparse_embeddings) != len(data):
-        raise ValueError("Количество эмбеддингов не совпадает с количеством документов")
 
     points = []
     for item, sparse_embedding in zip(data, sparse_embeddings):
