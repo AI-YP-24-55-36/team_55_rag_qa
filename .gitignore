@@ -23,8 +23,9 @@ site_build
 venv
 docs.zip
 archive.zip
-logs/bench.log
-logs/output
+logs/*
+!logs/graph/
+!logs/graph/**
 qdrant_data
 
 # vim temporary files
