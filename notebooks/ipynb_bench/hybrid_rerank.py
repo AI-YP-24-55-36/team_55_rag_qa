@@ -294,10 +294,8 @@ def benchmark_hybrid_rerank(client, collection_name, test_data, top_k_values, re
 def reranker(query, candidates, top_k=None):
     texts = [(query, context) for context, _ in candidates]
     scores = reranker_model.predict(texts)
-
     # Добавляем новые оценки и сортируем по ним
     reranked_results = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)
-
     # Возвращаем кортежи: (context, new_score)
     return [(context, score) for (context, _), score in reranked_results]
 

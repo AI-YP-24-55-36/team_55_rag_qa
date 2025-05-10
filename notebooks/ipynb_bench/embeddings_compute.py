@@ -10,7 +10,7 @@ BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
 logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
 '''
-В качестве dense модели берем msmarco-distilbert-base-tas-b
+В качестве dense модели для гибридной коллекции берем msmarco-distilbert-base-tas-b
 Метод предложен в статье Sbert.net - TAS-B: Improving Dense Retrieval with Token-Averaged Embeddings (https://www.sbert.net/examples/research/tas-b/README.html), 
 отличия от стандартного подхода:
 Вместо того чтобы использовать только [CLS] токен как эмбеддинг предложения (что часто делается в BERT), TAS-B усредняет эмбеддинги всех токенов.
