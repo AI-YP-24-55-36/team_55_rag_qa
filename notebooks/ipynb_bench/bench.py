@@ -16,7 +16,7 @@ BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
 logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
 
-# aeфункция для инициализации аргументов запуска бенчмарка
+# функция для инициализации аргументов запуска бенчмарка
 def parse_args():
     parser = argparse.ArgumentParser(description='Бенчмарк для RAG системы')
     # параметры подключения к Qdrant
