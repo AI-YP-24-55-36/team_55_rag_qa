@@ -4,6 +4,7 @@
 .csv
 .idea
 .txt
+.csv
 .npy
 .ipynb_checkpoints
 .mypy_cache
