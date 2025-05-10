@@ -21,4 +21,3 @@ python bench.py --model-names msmarco-roberta-base-ance-firstp all-MiniLM-L6-v2 
 # Запуск с настройкой параметров HNSW
 echo "Запуск бенчмарка с настройкой параметров HNSW..."
 python bench.py --hnsw-ef 128 --hnsw-m 32 --ef-construct 400
-

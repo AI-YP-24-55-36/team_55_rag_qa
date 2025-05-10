@@ -22,9 +22,8 @@ def evaluate_accuracy(accuracy_results, found_contexts, true_context, top_k_valu
         accuracy_results[k]["total"] += 1
         if true_context in found_contexts[:k]:
             accuracy_results[k]["correct"] += 1
-            logger.info(f"BM25 Запрос {query_idx}: '{query_text[:50]}...' - Контекст найден в top-{k} ✓")
         else:
-            logger.info(f"BM25 Запрос {query_idx}: '{query_text[:50]}...' - Контекст не найден в top-{k} ✗")
+            logger.info(f"Запрос {query_idx}: '{query_text[:50]}...' - Контекст не найден в top-{k} ✗")
 
 
 def calculate_speed_stats(results):
@@ -89,7 +88,7 @@ def print_accuracy_results(accuracy_results, models_to_compare, bm25_results=Non
     print("РЕЗУЛЬТАТЫ ОЦЕНКИ ТОЧНОСТИ ПОИСКА")
     print("=" * 80)
 
-    # Результаты для dense моделей
+    # результаты для dense моделей
     if models_to_compare:
         for model_name in models_to_compare:
             print(f"\nМодель: {model_name}")
@@ -103,7 +102,7 @@ def print_accuracy_results(accuracy_results, models_to_compare, bm25_results=Non
                             f"({result['correct']}/{result['total']})"
                         )
 
-    # Результаты для BM25
+    # результаты для BM25
     if bm25_results:
         print(f"\nМодель: BM25")
         for algo_name in bm25_results["accuracy"].keys():

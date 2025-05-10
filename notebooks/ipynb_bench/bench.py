@@ -8,7 +8,7 @@ from logger_init import setup_paths, setup_logging
 from visualisation import visualize_results
 from hybrid_rerank import print_comparison, run_bench_hybrid
 from visualisation import visualize_results_rerank
-from sparse_bm25 import upload_bm25_data, benchmark_bm25_model
+from sparse_bm25 import upload_bm25_data, run_benchmark_bm25_model
 from report_data import print_speed_results, print_accuracy_results
 from dense_model import upload_dense_model_collections, benchmark_performance
 
@@ -16,9 +16,10 @@ BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
 logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
 
+# aeфункция для инициализации аргументов запуска бенчмарка
 def parse_args():
     parser = argparse.ArgumentParser(description='Бенчмарк для RAG системы')
-    # Параметры подключения к Qdrant
+    # параметры подключения к Qdrant
     parser.add_argument('--qdrant-host', type=str, default='localhost',
                         help='Хост Qdrant сервера')
     parser.add_argument('--qdrant-port', type=int, default=6333,
@@ -26,7 +27,7 @@ def parse_args():
     parser.add_argument('--collection-name', type=str, default='rag',
                         help='Название коллекции в Qdrant')
 
-    # Параметры модели и поиска
+    # список моделей
     parser.add_argument('--model-names', nargs='+',
                         default=[
                             "all-MiniLM-L6-v2",
@@ -37,9 +38,9 @@ def parse_args():
                         help='Список моделей для сравнения, включая BM25')
     parser.add_argument('--vector-size', type=int, default=384,
                         help='Размер векторов эмбеддингов')
-    parser.add_argument('--batch-size', type=int, default=100,
+    parser.add_argument('--batch-size', type=int, default=1000,
                         help='Размер батча для загрузки данных')
-    parser.add_argument('--limit', type=int, default=100,
+    parser.add_argument('--limit', type=int, default=1000,
                         help='Максимальное количество записей для использования')
 
     # параметры HNSW для dense моделей
@@ -94,6 +95,7 @@ def initialize_models(all_models, args, client, data_for_db):
 
     return models_to_compare, bm25_model, model_instances, search_algorithms
 
+
 def evaluate_dense_models(client, models_to_compare, search_algorithms, args, data_df):
     """
     Выполняет бенчмарк уже загруженных dense-моделей.
@@ -134,7 +136,6 @@ def evaluate_dense_models(client, models_to_compare, search_algorithms, args, da
     return speed_results, accuracy_results
 
 
-
 def run_dense_benchmark(client, all_models, args, data_for_db, data_df):
     models_to_compare, bm25_model, model_instances, search_algorithms = initialize_models(all_models, args, client,
                                                                                           data_for_db)
@@ -142,7 +143,7 @@ def run_dense_benchmark(client, all_models, args, data_for_db, data_df):
     accuracy_results = {}
     upload_dense_model_collections(client, models_to_compare, args, data_for_db)
 
-    # Бенчмарк для dense моделей
+    # бенчмарк для dense моделей
     if models_to_compare:
         speed_results, accuracy_results = evaluate_dense_models(
             client=client,
@@ -162,15 +163,13 @@ def run_dense_benchmark(client, all_models, args, data_for_db, data_df):
                 save_dir="./logs/graphs"
             )
 
-    # Бенчмарк для BM25
+    # бенчмарк для BM25
     bm25_results = None
     if bm25_model:
-        bm25_results = benchmark_bm25_model(client, args.collection_name, data_for_db, data_df, search_algorithms)
-        # Вывод результатов
+        bm25_results = run_benchmark_bm25_model(client, args.collection_name, data_for_db, data_df, search_algorithms)
         print_speed_results(speed_results, models_to_compare, bm25_results)
         print_accuracy_results(accuracy_results, models_to_compare, bm25_results)
 
-        # Визуализация
         visualize_results(
             speed_results=speed_results,
             accuracy_results=accuracy_results,
@@ -195,16 +194,15 @@ def main():
     logger.info("Запуск бенчмарка RAG системы")
     # инициализация клиента Qdrant
     client = QdrantClient(host=args.qdrant_host, port=args.qdrant_port)
-    # загрузка данных с ограничением по размеру
+    # загрузка данных в соответствии с аргументом limit
     logger.info(f"Загрузка данных с limit={args.limit}")
     print(f"📂 Загрузка данных (limit={args.limit})...")
-
     data_for_db, data_df = read_data(limit=args.limit)
     logger.info(f"Загружено {len(data_for_db)} документов")
     print(f"✅ Загружено {len(data_for_db)} документов")
 
     if hybrid == 0:
-        # Получаем список моделей из аргументов командной строки
+        # список моделей из аргументов командной строки
         all_models = args.model_names
         logger.info(f"Выбранные модели для сравнения: {', '.join(all_models)}")
         print(f"🔄 Выбранные модели для сравнения: {', '.join(all_models)}")
