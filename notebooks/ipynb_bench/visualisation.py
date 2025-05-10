@@ -8,7 +8,7 @@ BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
 logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
 
-def plot_bars_with_labels(index, values, bar_width, color, label, offset, hatch=None, fmt="{:.1f}", y_offset=0.1):
+def plot_bars_with_labels(index, values, bar_width, color, label, offset, hatch=None, fmt="{:.1f}", y_offset=0.001):
     bars = plt.bar(
         index + offset,
         values,
@@ -183,7 +183,7 @@ def visualize_results_rerank(
     labels = ["Без реранкинга", "С реранкингом"]
 
     # --- Визуализация времени ---
-    plt.figure(figsize=(8, 5))
+    plt.figure(figsize=(10, 8))
     speeds = [
         results_without_rerank['speed']['avg_time'] * 1000,
         results_with_rerank['speed']['avg_time'] * 1000
@@ -199,8 +199,8 @@ def visualize_results_rerank(
             color=colors[i],
             label=label,
             offset=0,
-            fmt="{:.1f}",
-            y_offset=1
+            fmt="{:.3f}",
+            y_offset=0.0001
         )
 
     plt.xticks(index, labels)
@@ -212,7 +212,7 @@ def visualize_results_rerank(
     plt.close()
 
     # --- Визуализация точности ---
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(10, 8))
     acc_before = [results_without_rerank["accuracy"]["before_rerank"][k]["accuracy"] for k in top_k_values]
     acc_after = [results_with_rerank["accuracy"]["after_rerank"][k]["accuracy"] for k in top_k_values]
 
@@ -226,8 +226,8 @@ def visualize_results_rerank(
         color=colors[0],
         label=labels[0],
         offset=-bar_width / 2,
-        fmt="{:.2f}",
-        y_offset=0.01
+        fmt="{:.4f}",
+        y_offset=0.0001
     )
 
     plot_bars_with_labels(
@@ -237,8 +237,8 @@ def visualize_results_rerank(
         color=colors[1],
         label=labels[1],
         offset=bar_width / 2,
-        fmt="{:.2f}",
-        y_offset=0.01
+        fmt="{:.4f}",
+        y_offset=0.0001
     )
 
     plt.xticks(index, [f"Top-{k}" for k in top_k_values])

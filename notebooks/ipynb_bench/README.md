@@ -109,15 +109,16 @@ python bench.py --hybrid 1 --limit 11000
 
 ![logs/graphs/speed_comparison_20250510-193741.png](logs/graphs/speed_comparison_20250510-193741.png)  
 
-- запуск с параметром `--hybrid 1` активируется гибридная модель с реранкингом, в результате получаем сравнение:
-
-![logs/graphs/accuracy_comparison_20250510_202004_hybrid.png](logs/graphs/accuracy_comparison_20250510_202004_hybrid.png)
-
-![logs/graphs/speed_comparison_20250510_202004_hybrid.png](logs/graphs/speed_comparison_20250510_202004_hybrid.png)
-
 - запуск  теста для модели BM25 с различным количеством top_k  
 
 ![logs/graphs/accuracy_comparison_20250510-202828.png](logs/graphs/accuracy_comparison_20250510-202828.png)
+
+- запуск с параметром `--hybrid 1` активируется гибридная модель с реранкингом, в результате получаем сравнение:
+
+![logs/graphs/accuracy_comparison_20250510_222542_hybrid.png](logs/graphs/accuracy_comparison_20250510_222542_hybrid.png)
+
+![logs/graphs/speed_comparison_20250510_222542_hybrid.png](logs/graphs/speed_comparison_20250510_222542_hybrid.png)
+
 
 При извлечении 10 ответов, точность самая высокая
 
@@ -273,5 +274,6 @@ python bench.py --hnsw-ef 128 --hnsw-m 32 --ef-construct 400
 
 1. При сравнении dense моделей самая высокая точность у самой "тяжелой" модели (msmarco-roberta-base-ance-firstp), но скорость извления ответов из коллекции, созданной этой моделью ниже
 2. Лучшая точность при использовании гибридной модели
+3. С реранкингом точность выше
 3. Самая высокая скорость извлечения данных при работе с коллекцией BM25
 4. Гибридная модель проигрывает по скорости извлечения по сравнению с BM25
