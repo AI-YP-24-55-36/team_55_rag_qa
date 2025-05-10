@@ -113,14 +113,14 @@ python bench.py --hybrid 1 --limit 11000
 
 ![logs/graphs/accuracy_comparison_20250510-202828.png](logs/graphs/accuracy_comparison_20250510-202828.png)
 
+при извлечении 10 ответов, точность самая высокая
+
 - запуск с параметром `--hybrid 1` активируется гибридная модель с реранкингом, в результате получаем сравнение:
 
 ![logs/graphs/accuracy_comparison_20250510_222542_hybrid.png](logs/graphs/accuracy_comparison_20250510_222542_hybrid.png)
 
 ![logs/graphs/speed_comparison_20250510_222542_hybrid.png](logs/graphs/speed_comparison_20250510_222542_hybrid.png)
 
-
-При извлечении 10 ответов, точность самая высокая
 
 Отчет о проведении тестирования выглядит так:
 
