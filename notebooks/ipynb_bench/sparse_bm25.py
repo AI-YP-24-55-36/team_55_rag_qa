@@ -130,3 +130,35 @@ def benchmark_bm25(client, collection_name, test_data, search_params=None, top_k
 
     print(f"✅ Оценка производительности BM25 завершена для коллекции '{collection_name}'")
     return results
+
+
+def benchmark_bm25_model(client, base_collection_name, data_for_db, data_df, search_algorithms):
+    print("\n" + "=" * 80)
+    print("🔍 ОЦЕНКА ПРОИЗВОДИТЕЛЬНОСТИ BM25")
+    print("=" * 80)
+
+    logger.info("Запуск оценки производительности BM25")
+    bm25_collection_name = f"{base_collection_name}_bm25"
+    upload_bm25_data(client, bm25_collection_name, data_for_db)
+    bm25_speed_results = {}
+    bm25_accuracy_results = {}
+
+    for algo_name, search_params in search_algorithms.items():
+        logger.info(f"Оценка алгоритма {algo_name} с моделью BM25")
+        print(f"\n🔍 Оценка алгоритма {algo_name} с моделью BM25")
+
+        benchmark_results = benchmark_bm25(
+            client=client,
+            collection_name=bm25_collection_name,
+            test_data=data_df,
+            search_params=search_params,
+            top_k_values=[1, 3]
+        )
+
+        bm25_speed_results[algo_name] = benchmark_results["speed"]
+        bm25_accuracy_results[algo_name] = benchmark_results["accuracy"]
+
+    return {
+        "speed": bm25_speed_results,
+        "accuracy": bm25_accuracy_results
+    }

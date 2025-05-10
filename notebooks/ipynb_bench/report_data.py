@@ -3,6 +3,7 @@ from logger_init import setup_paths, setup_logging
 BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
 logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
+
 def init_results(top_k_values):
     return {
         "speed": {
@@ -15,6 +16,7 @@ def init_results(top_k_values):
         "accuracy": {k: {"correct": 0, "total": 0, "accuracy": 0} for k in top_k_values}
     }
 
+
 def evaluate_accuracy(accuracy_results, found_contexts, true_context, top_k_values, query_text, query_idx):
     for k in top_k_values:
         accuracy_results[k]["total"] += 1
@@ -23,6 +25,7 @@ def evaluate_accuracy(accuracy_results, found_contexts, true_context, top_k_valu
             logger.info(f"BM25 Запрос {query_idx}: '{query_text[:50]}...' - Контекст найден в top-{k} ✓")
         else:
             logger.info(f"BM25 Запрос {query_idx}: '{query_text[:50]}...' - Контекст не найден в top-{k} ✗")
+
 
 def calculate_speed_stats(results):
     query_times = results["speed"]["query_times"]
@@ -33,11 +36,13 @@ def calculate_speed_stats(results):
         results["speed"]["min_time"] = min(query_times)
     del results["speed"]["query_times"]
 
+
 def compute_final_accuracy(results):
     for k, data in results["accuracy"].items():
         correct = data["correct"]
         total = data["total"]
         data["accuracy"] = correct / total if total > 0 else 0
+
 
 def log_topk_accuracy(results, top_k_values):
     for k in top_k_values:
@@ -46,12 +51,12 @@ def log_topk_accuracy(results, top_k_values):
         total = results["accuracy"][k]["total"]
         logger.info(f"Точность поиска (top-{k}): {acc:.4f} ({correct}/{total})")
 
+
 def log_speed_stats(results):
     logger.info(f"Среднее время поиска: {results['speed']['avg_time'] * 1000:.2f} мс")
     logger.info(f"Медианное время поиска: {results['speed']['median_time'] * 1000:.2f} мс")
     logger.info(f"Максимальное время поиска: {results['speed']['max_time'] * 1000:.2f} мс")
     logger.info(f"Минимальное время поиска: {results['speed']['min_time'] * 1000:.2f} мс")
-
 
 
 def print_speed_results(speed_results, models_to_compare, bm25_results=None):
@@ -77,6 +82,7 @@ def print_speed_results(speed_results, models_to_compare, bm25_results=None):
             print(f"  Медианное время: {result['median_time'] * 1000:.2f} мс")
             print(f"  Максимальное время: {result['max_time'] * 1000:.2f} мс")
             print(f"  Минимальное время: {result['min_time'] * 1000:.2f} мс")
+
 
 def print_accuracy_results(accuracy_results, models_to_compare, bm25_results=None):
     print("\n" + "=" * 80)
