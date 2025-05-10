@@ -27,8 +27,8 @@ venv
 docs.zip
 archive.zip
 logs/*
-!logs/graph/
-!logs/graph/**
+!logs/graphs/
+!logs/graphs/**
 embeddings/
 qdrant_data
 
