@@ -168,16 +168,16 @@ def visualize_results(speed_results, accuracy_results, bm25_results=None, title_
 
     print(f"✅ Визуализации сохранены в директории {save_dir}")
 
+
 def visualize_results_rerank(
-    results_without_rerank,
-    results_with_rerank,
-    top_k_values=[1, 3],
-    title_prefix="Сравнение для гибридного поиска с реранкингом и без",
-    save_dir=f"{GRAPHS_DIR}"
+        results_without_rerank,
+        results_with_rerank,
+        top_k_values,
+        title_prefix="Сравнение для гибридного поиска с реранкингом и без",
+        save_dir=f"{GRAPHS_DIR}"
 ):
     print(f"\n📊 Создание визуализаций результатов реранкинга...")
     Path(save_dir).mkdir(exist_ok=True, parents=True)
-
     timestr = time.strftime("%Y%m%d_%H%M%S")
     colors = plt.cm.tab10(np.linspace(0, 1, 2))
     labels = ["Без реранкинга", "С реранкингом"]

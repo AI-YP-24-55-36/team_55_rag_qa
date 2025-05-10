@@ -99,7 +99,7 @@ def search_bm25(client, collection_name, sparse_vector, limit, search_params):
 
 
 # замеры скорости и точности
-def benchmark_bm25(client, collection_name, test_data, search_params=None, top_k_values=[1, 3]):
+def benchmark_bm25(client, collection_name, test_data,  top_k_values, search_params=None):
     print(f"\n🔍 Запуск оценки производительности BM25 для коллекции '{collection_name}'")
     logger.info(f"Запуск оценки производительности BM25 для коллекции '{collection_name}'")
     results = init_results(top_k_values)
@@ -130,8 +130,9 @@ def benchmark_bm25(client, collection_name, test_data, search_params=None, top_k
     print(f"✅ Оценка производительности BM25 завершена для коллекции '{collection_name}'")
     return results
 
+
 # запуск бенчмарка
-def run_benchmark_bm25_model(client, base_collection_name, data_for_db, data_df, search_algorithms):
+def run_benchmark_bm25_model(client, base_collection_name, data_for_db, data_df, search_algorithms, top_k_values):
     print("\n" + "=" * 80)
     print("🔍 ОЦЕНКА ПРОИЗВОДИТЕЛЬНОСТИ BM25")
     print("=" * 80)
@@ -147,8 +148,8 @@ def run_benchmark_bm25_model(client, base_collection_name, data_for_db, data_df,
             client=client,
             collection_name=bm25_collection_name,
             test_data=data_df,
+            top_k_values=top_k_values,
             search_params=search_params,
-            top_k_values=[1, 3]
         )
         bm25_speed_results[algo_name] = benchmark_results["speed"]
         bm25_accuracy_results[algo_name] = benchmark_results["accuracy"]

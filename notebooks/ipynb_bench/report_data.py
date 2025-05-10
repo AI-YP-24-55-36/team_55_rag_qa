@@ -83,18 +83,17 @@ def print_speed_results(speed_results, models_to_compare, bm25_results=None):
             print(f"  Минимальное время: {result['min_time'] * 1000:.2f} мс")
 
 
-def print_accuracy_results(accuracy_results, models_to_compare, bm25_results=None):
+def print_accuracy_results(accuracy_results, models_to_compare, top_k_values, bm25_results=None):
     print("\n" + "=" * 80)
     print("РЕЗУЛЬТАТЫ ОЦЕНКИ ТОЧНОСТИ ПОИСКА")
     print("=" * 80)
-
     # результаты для dense моделей
     if models_to_compare:
         for model_name in models_to_compare:
             print(f"\nМодель: {model_name}")
             for algo_name in accuracy_results[model_name].keys():
                 print(f"  Алгоритм: {algo_name}")
-                for k in [1, 3]:
+                for k in top_k_values:
                     if k in accuracy_results[model_name][algo_name]:
                         result = accuracy_results[model_name][algo_name][k]
                         print(
@@ -107,7 +106,7 @@ def print_accuracy_results(accuracy_results, models_to_compare, bm25_results=Non
         print(f"\nМодель: BM25")
         for algo_name in bm25_results["accuracy"].keys():
             print(f"  Алгоритм: {algo_name}")
-            for k in [1, 3]:
+            for k in top_k_values:
                 if k in bm25_results["accuracy"][algo_name]:
                     result = bm25_results["accuracy"][algo_name][k]
                     print(

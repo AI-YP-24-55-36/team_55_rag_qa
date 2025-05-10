@@ -125,7 +125,7 @@ def run_query(client, collection_name, query_vector, search_params, limit):
     return search_results, end_time - start_time
 
 # замеры скорости и точности
-def benchmark_performance(client, collection_name, test_data, model_name, search_params=None, top_k_values=[1, 3]):
+def benchmark_performance(client, collection_name, test_data, model_name, top_k_values, search_params=None):
     print(f"\n🔍 Запуск оценки производительности для коллекции '{collection_name}'")
     logger.info(f"Запуск оценки производительности для коллекции '{collection_name}'")
     results = init_results(top_k_values)

@@ -223,7 +223,7 @@ def log_final_metrics(results, top_k_values):
     logger.info(f"Hybrid Search Минимальное время поиска: {results['speed']['min_time'] * 1000:.2f} мс")
 
 # запуск бенчмарка
-def benchmark_hybrid_rerank(client, collection_name, test_data, top_k_values=[1, 3], reranker=None):
+def benchmark_hybrid_rerank(client, collection_name, test_data, top_k_values, reranker=None):
     print(f"\n🔍 Запуск оценки производительности Гибридного Поиска + Реранка для коллекции '{collection_name}'")
     logger.info(f"Запуск оценки производительности Гибридного Поиска + Реранка для коллекции '{collection_name}'")
 
@@ -302,7 +302,7 @@ def reranker(query, candidates, top_k=None):
     return [(context, score) for (context, _), score in reranked_results]
 
 
-def print_comparison(results_without_rerank, results_with_rerank, top_k_values=[1, 3]):
+def print_comparison(results_without_rerank, results_with_rerank, top_k_values):
     print("\n📊 Сравнение результатов Hybrid Search с реранкингом и без него:\n")
 
     print("⏳ Время выполнения запроса:")
@@ -319,7 +319,7 @@ def print_comparison(results_without_rerank, results_with_rerank, top_k_values=[
         print(f"    - С реранкингом: {acc_after:.4f}")
 
 
-def run_bench_hybrid(client, data_for_db, data_df):
+def run_bench_hybrid(client, data_for_db, data_df, top_k_values):
     # Загрузка данных
     upload_hybrid_data(
         client=client,
@@ -331,6 +331,7 @@ def run_bench_hybrid(client, data_for_db, data_df):
         client=client,
         collection_name="hybrid_collection",
         test_data=data_df,
+        top_k_values=top_k_values,
         reranker=None
     )
 
@@ -339,6 +340,7 @@ def run_bench_hybrid(client, data_for_db, data_df):
         client=client,
         collection_name="hybrid_collection",
         test_data=data_df,
+        top_k_values=top_k_values,
         reranker=reranker  # передача функцию реранкинга
     )
 

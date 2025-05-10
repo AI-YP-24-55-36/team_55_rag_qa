@@ -26,6 +26,9 @@ def parse_args():
                         help='Порт Qdrant сервера')
     parser.add_argument('--collection-name', type=str, default='rag',
                         help='Название коллекции в Qdrant')
+    parser.add_argument('--topk', type=int, nargs='+',
+                        default=[1, 3, 5],
+                        help='Количество извлекаемых ответов')
 
     # список моделей
     parser.add_argument('--model-names', nargs='+',
@@ -102,6 +105,7 @@ def evaluate_dense_models(client, models_to_compare, search_algorithms, args, da
     """
     speed_results = {}
     accuracy_results = {}
+    top_k_values = args.topk
 
     for model_name in models_to_compare:
         collection_name = f"{args.collection_name}_{model_name.replace('-', '_')}"
@@ -126,8 +130,8 @@ def evaluate_dense_models(client, models_to_compare, search_algorithms, args, da
                 collection_name=collection_name,
                 test_data=data_df,
                 model_name=model_name,
-                search_params=search_params,
-                top_k_values=[1, 3]
+                top_k_values=top_k_values,
+                search_params=search_params
             )
 
             speed_results[model_name][algo_name] = benchmark_results["speed"]
@@ -142,7 +146,7 @@ def run_dense_benchmark(client, all_models, args, data_for_db, data_df):
     speed_results = {}
     accuracy_results = {}
     upload_dense_model_collections(client, models_to_compare, args, data_for_db)
-
+    top_k_values = args.topk
     # бенчмарк для dense моделей
     if models_to_compare:
         speed_results, accuracy_results = evaluate_dense_models(
@@ -155,7 +159,7 @@ def run_dense_benchmark(client, all_models, args, data_for_db, data_df):
 
         if bm25_model != 'BM25':
             print_speed_results(speed_results, models_to_compare)
-            print_accuracy_results(accuracy_results, models_to_compare)
+            print_accuracy_results(accuracy_results, models_to_compare, top_k_values)
             visualize_results(
                 speed_results=speed_results,
                 accuracy_results=accuracy_results,
@@ -166,9 +170,9 @@ def run_dense_benchmark(client, all_models, args, data_for_db, data_df):
     # бенчмарк для BM25
     bm25_results = None
     if bm25_model:
-        bm25_results = run_benchmark_bm25_model(client, args.collection_name, data_for_db, data_df, search_algorithms)
+        bm25_results = run_benchmark_bm25_model(client, args.collection_name, data_for_db, data_df, search_algorithms, top_k_values)
         print_speed_results(speed_results, models_to_compare, bm25_results)
-        print_accuracy_results(accuracy_results, models_to_compare, bm25_results)
+        print_accuracy_results(accuracy_results, models_to_compare, top_k_values, bm25_results)
 
         visualize_results(
             speed_results=speed_results,
@@ -210,6 +214,7 @@ def main():
 
     # гибридный поиск в гибридной коллекции
     elif hybrid == 1:
+        top_k_values = args.topk
         print("\n" + "=" * 80)
         print("🚀 ЗАПУСК БЕНЧМАРКА RAG СИСТЕМЫ С ГИБРИДНЫМ ПОИСКОМ")
         print("=" * 80)
@@ -217,9 +222,9 @@ def main():
         args = parse_args()
         data_for_db, data_df = read_data(limit=args.limit)
         client = QdrantClient(host=args.qdrant_host, port=args.qdrant_port)
-        results_without_rerank, results_with_rerank = run_bench_hybrid(client, data_for_db, data_df)
-        print_comparison(results_without_rerank, results_with_rerank)
-        visualize_results_rerank(results_without_rerank, results_with_rerank)
+        results_without_rerank, results_with_rerank = run_bench_hybrid(client, data_for_db, data_df, top_k_values)
+        print_comparison(results_without_rerank, results_with_rerank, top_k_values)
+        visualize_results_rerank(results_without_rerank, results_with_rerank, top_k_values)
         logger.info("Бенчмарк завершен успешно")
         print("\n" + "=" * 80)
         print("✅ БЕНЧМАРК ЗАВЕРШЕН УСПЕШНО")
