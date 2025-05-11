@@ -231,7 +231,7 @@ python bench.py --model-names msmarco-roberta-base-ance-firstp all-MiniLM-L6-v2 
 ### Сравнение всех моделей
 
 ```bash
-python bench.py --model-names msmarco-roberta-base-ance-firstp all-MiniLM-L6-v2 msmarco-MiniLM-L-6-v3
+python bench.py --model-names msmarco-roberta-base-ance-firstp all-MiniLM-L6-v2 msmarco-MiniLM-L-6-v3 BM25
 ```
 ### Уменьшение размера выборки
 
