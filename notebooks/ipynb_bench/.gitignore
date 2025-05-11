@@ -4,7 +4,6 @@
 .csv
 .idea
 .txt
-.csv
 .npy
 .ipynb_checkpoints
 .mypy_cache
@@ -32,6 +31,7 @@ logs/*
 !logs/graphs/**
 embeddings/
 qdrant_data
+full_dataset.csv
 
 # vim temporary files
 *~

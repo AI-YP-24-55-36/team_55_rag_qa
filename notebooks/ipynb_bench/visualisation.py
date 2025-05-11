@@ -134,7 +134,7 @@ def visualize_results(speed_results, accuracy_results, bm25_results=None, title_
                     for k in top_k_values
                 ]
                 plot_bars_with_labels(index, values, bar_width, colors[i], f"{model} - {algo}", i * bar_width,
-                                      fmt="{:.3f}", y_offset=0.01)
+                                      fmt="{:.5f}", y_offset=0.0001)
                 i += 1
 
     if has_bm25:
@@ -145,7 +145,7 @@ def visualize_results(speed_results, accuracy_results, bm25_results=None, title_
                     for k in top_k_values
                 ]
                 plot_bars_with_labels(index, values, bar_width, colors[i], f"BM25 - {algo}", i * bar_width, hatch='//',
-                                      fmt="{:.3f}", y_offset=0.01)
+                                      fmt="{:.5f}", y_offset=0.0001)
                 i += 1
         else:
             values = [
