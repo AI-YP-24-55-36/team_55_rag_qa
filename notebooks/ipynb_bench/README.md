@@ -6,7 +6,8 @@
 ## Возможности
 
 - Сравнение различных dense моделей (beir.retrieval.models):
-``` {
+``` 
+    {
         "all-MiniLM-L6-v2": SentenceBERT("sentence-transformers/all-MiniLM-L6-v2"),  # 384
         "msmarco-MiniLM-L-6-v3": SentenceBERT("sentence-transformers/msmarco-MiniLM-L-6-v3"),  # 384
         "msmarco-roberta-base-ance-firstp": SentenceBERT("sentence-transformers/msmarco-roberta-base-ance-firstp"),  # 768
