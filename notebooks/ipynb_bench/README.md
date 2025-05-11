@@ -209,8 +209,8 @@ python bench.py --hybrid 1 --limit 11000
 ### Reranker
 
 Cортировка кандидатов:
-модель: `reranker_model = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L-2-v2")`
-`reranked_results = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)`  
+модель: `reranker_model = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L-2-v2")`  
+`reranked_results = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)`   
 
 Кандидаты и их соответствующие оценки объединяются в список кортежей с помощью zip. 
 Затем этот список сортируется по оценкам (второй элемент каждого кортежа), в порядке убывания (reverse=True). 
