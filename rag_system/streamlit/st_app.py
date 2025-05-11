@@ -460,8 +460,15 @@ def main():
                         if response.status_code == 200:
                             if response.json() != []:
                                 request = response.json()["answer"]
-                                # used_contexts=response.json()["used_contexts"],
+                                metrics = response.json()["metrics"]
                                 log_and_display(f"Ответ: {request}", level="success", display_func=st.success)
+                                with st.expander("Оценка качества ответа", expanded=True):
+                                    st.markdown(f"""
+                                    **Релевантность**: {metrics['relevance']}/5
+                                    **Точность**: {metrics['accuracy']}/5
+                                    **Грамотность**: {metrics['fluency']}/5
+                                    **Описание**: {metrics['description']}
+                                    """)
                                 log_and_display("Предикт выполнен успешно", level="success")
                             else:
                                 log_and_display("Ответ не найден", level="success", display_func=st.success)

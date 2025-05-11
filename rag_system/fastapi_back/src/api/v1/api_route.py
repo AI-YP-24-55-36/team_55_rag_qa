@@ -1,5 +1,6 @@
 from http import HTTPStatus
 from typing import List
+import json
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException
@@ -207,13 +208,12 @@ async def find_answer(request: Annotated[PredictRequest, "Вопрос для п
     )
 
     system_prompt = """Ты - помощник, который отвечает на вопрос на основе предоставленных контекстов и самого вопроса.
+    Ты берешь информацию только из контекстов.
     Если ответа нет в контекстах, скажи об этом."""
 
     user_prompt = f"""Вопрос: {request.question}
-
     Контексты:
     {contexts_text}
-
     Ответь максимально точно, используя только эти контексты."""
 
     try:
@@ -231,6 +231,30 @@ async def find_answer(request: Annotated[PredictRequest, "Вопрос для п
 
         llm_answer = chat_completion.choices[0].message.content
 
+        # оценка ответа через другую модель
+        evaluation_prompt = f"""
+        Вопрос: {request.question}
+        Контексты: {contexts_text}
+        Ответ: {llm_answer}
+
+        Оцени ответ по шкале от 1 до 5 по критериям:
+        1. **Релевантность** (соответствие вопросу).
+        2. **Точность** (использование контекста без ошибок).
+        3. **Грамотность** (ясность и связность текста).
+        И напиши краткое описание почему получились такие оценки.
+        Выведи оценки в формате JSON: {{"relevance": X, "accuracy": Y, "fluency": Z, "description": desc}}
+        """
+        system_eval_prompt = """Ты - эксперт который проверяет генеративную модель, на правильность ответов.
+        Все твои ответы должны быть на русском языке. Подходи к задаче максимально строго.""" 
+        evaluation_response = client.chat.completions.create(
+            messages=[{"role": "system", "content": system_eval_prompt},
+                      {"role": "user", "content": evaluation_prompt}],
+            model="deepseek-r1-distill-llama-70b",
+            temperature=0.3,
+            response_format={"type": "json_object"}
+        )
+        metrics = json.loads(evaluation_response.choices[0].message.content)
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -242,10 +266,11 @@ async def find_answer(request: Annotated[PredictRequest, "Вопрос для п
         answer=llm_answer,
         used_contexts=[{"context": ctx.context, "score": ctx.score, "point_id": ctx.point_id, "model_id": ctx.model_id}
                        for ctx in top_contexts],
-        model_used="llama3-70b-8192"
+        metrics=metrics,
+        model_used="llama3-70b-8192",
+        model_judge="deepseek-r1-distill-llama-70b"
     )
 
-# db['datasets'][next(iter(db['datasets']))]
 
 @router.post("/quality_test", response_model=AccuracyResponse,
              description='Оценка точности и скорости работы модели')

@@ -101,8 +101,17 @@ class AccuracyResponse(BaseModel):
     timings: List[float]
 
 
+class EvaluationMetrics(BaseModel):
+    relevance: int
+    accuracy: int
+    fluency: int
+    description: str
+
+
 class FindAnswerResponse(BaseModel):
     question: str
     answer: str
     used_contexts: List[dict]
+    metrics: EvaluationMetrics
     model_used: str
+    model_judge: str
