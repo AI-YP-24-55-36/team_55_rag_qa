@@ -99,3 +99,10 @@ class FindCntxtsResponse(RootModel):
 class AccuracyResponse(BaseModel):
     accuracy: float
     timings: List[float]
+
+
+class FindAnswerResponse(BaseModel):
+    question: str
+    answer: str
+    used_contexts: List[dict]
+    model_used: str

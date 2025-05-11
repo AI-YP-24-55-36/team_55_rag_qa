@@ -31,6 +31,8 @@ def clear_other_checkboxes(checked_key):
     for key in st.session_state:
         if key != checked_key and st.session_state[key]:
             st.session_state[key] = False
+    if 'textarea' in st.session_state:
+        st.session_state.textarea = ""
 
 
 def text_form(key):
@@ -220,9 +222,9 @@ def main():
                                     display_func=st.success)
                 else:
                     st.warning("В датасете нет пропущенных значений")
-                data["context"] = data[columns[0]].apply(lambda x: prep(x))
-                data["question"] = data[columns[1]].apply(lambda x: prep(x))
-                data["answer"] = data[columns[2]].apply(lambda x: prep(x))
+                data["context"] = data[columns[0]].apply(prep)
+                data["question"] = data[columns[1]].apply(prep)
+                data["answer"] = data[columns[2]].apply(prep)
 
                 log_and_display(
                     "Текст очищен от стоп-слов, от символов не являющихся буквами и цифрами", level="success",
@@ -411,7 +413,8 @@ def main():
                         except Exception:
                             log_and_display("Нет загруженных моделей", level="error", display_func=st.error)
 
-                if st.sidebar.checkbox("Инференс", key="infer", on_change=clear_other_checkboxes, args=("infer",)):
+                if st.sidebar.checkbox("Инференс ретривел", key="inf_ret",
+                                       on_change=clear_other_checkboxes, args=("inf_ret",)):
                     text_form("textarea")
                     model_id_inf = st.text_input("model_id", max_chars=20)
                     if st.button('Отправить текст'):
@@ -439,6 +442,33 @@ def main():
                         else:
                             log_and_display(f"Нет модели с таким id: {response.status_code}", level="error",
                                             display_func=st.error)
+
+                if st.sidebar.checkbox("Инференс", key="inf", on_change=clear_other_checkboxes, args=("inf",)):
+                    text_form("textarea")
+                    model_id_inf = st.text_input("model_id", max_chars=20)
+                    if st.button('Отправить текст'):
+                        if st.session_state.textarea:
+                            st.success('Текст отправлен в модель')
+                        else:
+                            st.warning('Поле пустое')
+                    if st.session_state.textarea:
+                        st.write(st.session_state.textarea)
+                        test = st.session_state.textarea
+                        context = {"model_id": model_id_inf, "question": test}
+
+                        response = requests.post(f"{API_URL}/find_answer", json=context, timeout=10000)
+                        if response.status_code == 200:
+                            if response.json() != []:
+                                request = response.json()["answer"]
+                                # used_contexts=response.json()["used_contexts"],
+                                log_and_display(f"Ответ: {request}", level="success", display_func=st.success)
+                                log_and_display("Предикт выполнен успешно", level="success")
+                            else:
+                                log_and_display("Ответ не найден", level="success", display_func=st.success)
+                        else:
+                            log_and_display(f"Нет модели с таким id: {response.status_code}", level="error",
+                                            display_func=st.error)
+
                 st.sidebar.subheader("Удаление моделей")
 
                 model_id_remove = st.sidebar.text_input("model_id_remove", max_chars=20)

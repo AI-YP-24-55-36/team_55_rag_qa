@@ -5,6 +5,7 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException
 from qdrant_client import QdrantClient
 from sklearn.feature_extraction.text import TfidfVectorizer
+from groq import Groq
 
 from src.qdrant.load_qdrant import save_vectors_batch, search_similar_texts, check_questions
 from src.logger import api_logger
@@ -21,6 +22,7 @@ from src.api.v1.schemas import (
     CheckRequest,
     DsListResponse,
     ModelsListResponse,
+    FindAnswerResponse
 )
 
 
@@ -180,6 +182,70 @@ async def find_context(request: Annotated[PredictRequest,
     api_logger.info("contexts found")
     return FindCntxtsResponse(root=rs)
 
+
+@router.post("/find_answer",
+             description='Поиск ответа на вопрос')
+async def find_answer(request: Annotated[PredictRequest, "Вопрос для поиска ответа"]):
+    """Поиск ответа"""
+    try:
+        context_response = await find_context(request)
+        top_contexts = context_response.root[:3]
+        if not top_contexts:
+            raise HTTPException(
+                status_code=404,
+                detail="Не найдено подходящих контекстов"
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f'Ошибка при поиске контекстов: {str(e)}'
+            ) from e
+
+    contexts_text = "\n\n".join(
+        [f"Контекст {i+1} (score={ctx.score:.2f}): {ctx.context}"
+         for i, ctx in enumerate(top_contexts)]
+    )
+
+    system_prompt = """Ты - помощник, который отвечает на вопрос на основе предоставленных контекстов и самого вопроса.
+    Если ответа нет в контекстах, скажи об этом."""
+
+    user_prompt = f"""Вопрос: {request.question}
+
+    Контексты:
+    {contexts_text}
+
+    Ответь максимально точно, используя только эти контексты."""
+
+    try:
+        client = Groq(api_key='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')
+
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            model="llama3-70b-8192",
+            temperature=0.3,
+            max_tokens=1024
+        )
+
+        llm_answer = chat_completion.choices[0].message.content
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ошибка при запросе к LLM: {str(e)}"
+        ) from e
+
+    return FindAnswerResponse(
+        question=request.question,
+        answer=llm_answer,
+        used_contexts=[{"context": ctx.context, "score": ctx.score, "point_id": ctx.point_id, "model_id": ctx.model_id}
+                       for ctx in top_contexts],
+        model_used="llama3-70b-8192"
+    )
+
+# db['datasets'][next(iter(db['datasets']))]
 
 @router.post("/quality_test", response_model=AccuracyResponse,
              description='Оценка точности и скорости работы модели')
