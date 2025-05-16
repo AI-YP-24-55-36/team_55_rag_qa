@@ -39,3 +39,4 @@ tzdata==2024.2
 urllib3==2.3.0
 uvicorn==0.34.0
 groq
+python-dotenv

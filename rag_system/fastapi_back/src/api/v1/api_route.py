@@ -10,6 +10,7 @@ from groq import Groq
 
 from src.qdrant.load_qdrant import save_vectors_batch, search_similar_texts, check_questions
 from src.logger import api_logger
+from src.config import API_KEY_GROQ
 
 from src.api.v1.schemas import (
     MutlipleApiResponse,
@@ -206,18 +207,21 @@ async def find_answer(request: Annotated[PredictRequest, "Вопрос для п
         [f"Контекст {i+1} (score={ctx.score:.2f}): {ctx.context}"
          for i, ctx in enumerate(top_contexts)]
     )
+    # Ты - помощник, который отвечает на вопрос на основе предоставленных контекстов и самого вопроса.
+    # Ты берешь информацию только из контекстов.
+    # Если ответа нет в контекстах, скажи об этом.
+    system_prompt = """You are a helper who answers a question based on the contexts provided and the question itself.
+    You only take information from the contexts.
+    If the answer is not in the contexts, say so."""
 
-    system_prompt = """Ты - помощник, который отвечает на вопрос на основе предоставленных контекстов и самого вопроса.
-    Ты берешь информацию только из контекстов.
-    Если ответа нет в контекстах, скажи об этом."""
-
-    user_prompt = f"""Вопрос: {request.question}
-    Контексты:
+    user_prompt = f"""Question: {request.question}
+    Contexts:
     {contexts_text}
-    Ответь максимально точно, используя только эти контексты."""
+    Answer as accurately as possible using only these contexts."""
+    # Ответь максимально точно, используя только эти контексты
 
     try:
-        client = Groq(api_key='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')
+        client = Groq(api_key=API_KEY_GROQ)
 
         chat_completion = client.chat.completions.create(
             messages=[
@@ -232,24 +236,31 @@ async def find_answer(request: Annotated[PredictRequest, "Вопрос для п
         llm_answer = chat_completion.choices[0].message.content
 
         # оценка ответа через другую модель
+        # Оцени ответ по шкале от 1 до 5 по критериям:
+        # 1. **Релевантность** (соответствие вопросу).
+        # 2. **Точность** (использование контекста без ошибок).
+        # 3. **Грамотность** (ясность и связность текста).
+        # И напиши краткое описание почему получились такие оценки.
+        # Выведи оценки в формате JSON
         evaluation_prompt = f"""
-        Вопрос: {request.question}
-        Контексты: {contexts_text}
-        Ответ: {llm_answer}
-
-        Оцени ответ по шкале от 1 до 5 по критериям:
-        1. **Релевантность** (соответствие вопросу).
-        2. **Точность** (использование контекста без ошибок).
-        3. **Грамотность** (ясность и связность текста).
-        И напиши краткое описание почему получились такие оценки.
-        Выведи оценки в формате JSON: {{"relevance": X, "accuracy": Y, "fluency": Z, "description": desc}}
+        Question: {request.question}
+        Contexts: {contexts_text}
+        Answer: {llm_answer}
+        Approach the task as strictly as possible.
+        Rate the answer on a scale from 1 to 5 based on the criteria:
+        1. **Relevance** (correspondence to the question).
+        2. **Accuracy** (use of context without errors).
+        3. **Literacy** (clarity and coherence of the text).
+        Provide a description of why such ratings were obtained, the description must be in Russian.
+        Output the ratings in JSON format: {{"relevance": X, "accuracy": Y, "fluency": Z, "description": desc}}
         """
-        system_eval_prompt = """Ты - эксперт который проверяет генеративную модель, на правильность ответов.
-        Все твои ответы должны быть на русском языке. Подходи к задаче максимально строго.""" 
+
+        system_eval_prompt = """You are an expert who checks the generative model for correct answers.
+        Approach the task as strictly as possible."""
         evaluation_response = client.chat.completions.create(
             messages=[{"role": "system", "content": system_eval_prompt},
                       {"role": "user", "content": evaluation_prompt}],
-            model="deepseek-r1-distill-llama-70b",
+            model="llama-3.3-70b-versatile",
             temperature=0.3,
             response_format={"type": "json_object"}
         )
@@ -268,7 +279,7 @@ async def find_answer(request: Annotated[PredictRequest, "Вопрос для п
                        for ctx in top_contexts],
         metrics=metrics,
         model_used="llama3-70b-8192",
-        model_judge="deepseek-r1-distill-llama-70b"
+        model_judge="llama-3.3-70b-versatile"
     )
 
 
