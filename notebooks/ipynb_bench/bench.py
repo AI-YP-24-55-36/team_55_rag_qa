@@ -1,6 +1,6 @@
 import argparse
 from tqdm import tqdm
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import SearchParams, HnswConfigDiff
 from read_data_from_csv import read_data
@@ -11,8 +11,9 @@ from visualisation import visualize_results_rerank
 from sparse_bm25 import upload_bm25_data, run_benchmark_bm25_model
 from report_data import print_speed_results, print_accuracy_results
 from dense_model import upload_dense_model_collections, benchmark_performance
+from models_init import EMBEDDING_MODELS
 
-BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
+BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR,  = setup_paths()
 logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
 
@@ -29,14 +30,17 @@ def parse_args():
     parser.add_argument('--topk', type=int, nargs='+',
                         default=[1, 3, 5],
                         help='Количество извлекаемых ответов')
+    parser.add_argument('--load', type=int, default=1,
+                        help='Параметр, говорит о том, нужно ли создавать и загружать коллекцию')
 
     # список моделей
     parser.add_argument('--model-names', nargs='+',
                         default=[
-                            "all-MiniLM-L6-v2",
-                            "msmarco-MiniLM-L-6-v3",
-                            "msmarco-roberta-base-ance-firstp",
-                            'BM25'],
+                            "jina-embeddings-v2-base-en",
+                            "snowflake-arctic-embed-s",
+                            "mxbai-embed-large-v1",
+                            "multilingual-e5-large",
+                            "BM25"],
 
                         help='Список моделей для сравнения, включая BM25')
     parser.add_argument('--vector-size', type=int, default=384,
@@ -60,6 +64,7 @@ def parse_args():
     return parser.parse_args()
 
 
+
 def initialize_models(all_models, args, client, data_for_db):
     models_to_compare = [m for m in all_models if m != 'BM25']
     use_bm25 = 'BM25' in all_models
@@ -72,7 +77,7 @@ def initialize_models(all_models, args, client, data_for_db):
         for model_name in models_to_compare.copy():
             try:
                 logger.info(f"Инициализация модели: {model_name}")
-                model_instances[model_name] = SentenceTransformer(model_name)
+                model_instances[model_name] = EMBEDDING_MODELS.get(model_name)
                 progress_bar.update(1)
             except Exception as e:
                 logger.error(f"Ошибка при инициализации модели {model_name}: {e}")
@@ -93,7 +98,12 @@ def initialize_models(all_models, args, client, data_for_db):
         bm25_model = 'BM25'
 
         bm25_collection_name = f"{args.collection_name}_bm25"
-        upload_bm25_data(client, bm25_collection_name, data_for_db)
+        if args.load == 1:
+            upload_bm25_data(client, bm25_collection_name, data_for_db)
+        else:
+            logger.info(f"🔍 Не загружаем данные, параметр load=0")
+            print(f"\n🔍Не загружаем данные, параметр load=0")
+
         search_algorithms = {"Exact Search": SearchParams(exact=True)}
 
     return models_to_compare, bm25_model, model_instances, search_algorithms
@@ -145,7 +155,11 @@ def run_dense_benchmark(client, all_models, args, data_for_db, data_df):
                                                                                           data_for_db)
     speed_results = {}
     accuracy_results = {}
-    upload_dense_model_collections(client, models_to_compare, args, data_for_db)
+    if args.load == 1:
+        upload_dense_model_collections(client, models_to_compare, args, data_for_db)
+    else:
+        logger.info(f"🔍 Не загружаем данные, параметр load=0")
+        print(f"\n🔍Не загружаем данные, параметр load=0")
     top_k_values = args.topk
     # бенчмарк для dense моделей
     if models_to_compare:
@@ -170,7 +184,7 @@ def run_dense_benchmark(client, all_models, args, data_for_db, data_df):
     # бенчмарк для BM25
     bm25_results = None
     if bm25_model:
-        bm25_results = run_benchmark_bm25_model(client, args.collection_name, data_for_db, data_df, search_algorithms, top_k_values)
+        bm25_results = run_benchmark_bm25_model(client, args.collection_name, args.load, data_for_db, data_df, search_algorithms, top_k_values)
         print_speed_results(speed_results, models_to_compare, bm25_results)
         print_accuracy_results(accuracy_results, models_to_compare, top_k_values, bm25_results)
 
@@ -215,6 +229,7 @@ def main():
     # гибридный поиск в гибридной коллекции
     elif hybrid == 1:
         top_k_values = args.topk
+        load = args.load
         print("\n" + "=" * 80)
         print("🚀 ЗАПУСК БЕНЧМАРКА RAG СИСТЕМЫ С ГИБРИДНЫМ ПОИСКОМ")
         print("=" * 80)
@@ -222,7 +237,7 @@ def main():
         args = parse_args()
         data_for_db, data_df = read_data(limit=args.limit)
         client = QdrantClient(host=args.qdrant_host, port=args.qdrant_port)
-        results_without_rerank, results_with_rerank = run_bench_hybrid(client, data_for_db, data_df, top_k_values)
+        results_without_rerank, results_with_rerank = run_bench_hybrid(client, data_for_db, data_df, load, top_k_values)
         print_comparison(results_without_rerank, results_with_rerank, top_k_values)
         visualize_results_rerank(results_without_rerank, results_with_rerank, top_k_values)
         logger.info("Бенчмарк завершен успешно")

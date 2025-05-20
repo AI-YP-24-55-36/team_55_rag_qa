@@ -134,7 +134,7 @@ def visualize_results(speed_results, accuracy_results, bm25_results=None, title_
                     for k in top_k_values
                 ]
                 plot_bars_with_labels(index, values, bar_width, colors[i], f"{model} - {algo}", i * bar_width,
-                                      fmt="{:.5f}", y_offset=0.0001)
+                                      fmt="{:.4f}", y_offset=0.0001)
                 i += 1
 
     if has_bm25:
@@ -145,7 +145,7 @@ def visualize_results(speed_results, accuracy_results, bm25_results=None, title_
                     for k in top_k_values
                 ]
                 plot_bars_with_labels(index, values, bar_width, colors[i], f"BM25 - {algo}", i * bar_width, hatch='//',
-                                      fmt="{:.5f}", y_offset=0.0001)
+                                      fmt="{:.4f}", y_offset=0.0001)
                 i += 1
         else:
             values = [
@@ -212,7 +212,7 @@ def visualize_results_rerank(
     plt.close()
 
     # --- Визуализация точности ---
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(12, 8))
     acc_before = [results_without_rerank["accuracy"]["before_rerank"][k]["accuracy"] for k in top_k_values]
     acc_after = [results_with_rerank["accuracy"]["after_rerank"][k]["accuracy"] for k in top_k_values]
 

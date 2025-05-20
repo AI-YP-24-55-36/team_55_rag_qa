@@ -6,7 +6,7 @@ from qdrant_client.models import (
     VectorParams,
     PointStruct
 )
-from sentence_transformers import SentenceTransformer
+from models_init import EMBEDDING_MODELS
 from logger_init import setup_paths, setup_logging
 from report_data import (init_results, evaluate_accuracy,
                          calculate_speed_stats, compute_final_accuracy,
@@ -14,13 +14,9 @@ from report_data import (init_results, evaluate_accuracy,
 
 BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
 logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
+from models_init import MODEL_VECTOR_SIZES
 
 # список денз моделей с длинами векторов
-MODEL_VECTOR_SIZES = {
-    'msmarco-roberta-base-ance-firstp': 768,
-    'all-MiniLM-L6-v2': 384,
-    'msmarco-MiniLM-L-6-v3': 384,
-}
 
 
 # создание денз коллекции
@@ -131,7 +127,8 @@ def benchmark_performance(client, collection_name, test_data, model_name, top_k_
     results = init_results(top_k_values)
     max_top_k = max(top_k_values)
     total_queries = len(test_data)
-    model = SentenceTransformer(model_name)
+    # model = TextEmbedding(f'model_name="{model_name}"')
+    model = EMBEDDING_MODELS.get(model_name)
     logger.info(f"Оценка производительности для {total_queries} запросов")
     print(f"⏱️  Измерение скорости и точности поиска...")
     progress_bar = tqdm(total=total_queries, desc="Обработка запросов", unit="запрос")
@@ -139,7 +136,7 @@ def benchmark_performance(client, collection_name, test_data, model_name, top_k_
     for idx, row in test_data.iterrows():
         query_text = row['question']
         true_context = row['context']
-        query_vector = model.encode(query_text)
+        query_vector = list(model.embed(query_text, normalize=True))[0] # model.encode(query_text)
         search_results, query_time = run_query(client, collection_name, query_vector, search_params, max_top_k)
         results["speed"]["query_times"].append(query_time)
         found_contexts = [point.payload.get('context', '') for point in search_results.points]

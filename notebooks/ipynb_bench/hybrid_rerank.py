@@ -1,15 +1,15 @@
 import time
 import pickle
 import numpy as np
-from fastembed import SparseTextEmbedding, LateInteractionTextEmbedding
-from beir.retrieval.models import SentenceBERT
-from sentence_transformers import CrossEncoder
-# from fastembed.rerank.cross_encoder import TextCrossEncoder
+from fastembed import SparseTextEmbedding, LateInteractionTextEmbedding, TextEmbedding
+# from sentence_transformers import CrossEncoder
+from fastembed.rerank.cross_encoder import TextCrossEncoder
 from qdrant_client import models
 from qdrant_client.models import (
     Distance,
     Modifier,
     OptimizersConfigDiff,
+    HnswConfigDiff,
     MultiVectorConfig,
     SparseIndexParams,
     SparseVectorParams,
@@ -25,8 +25,10 @@ BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
 logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
 # модель для реранкинга
-reranker_model = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L-2-v2")
-# reranker_model = TextCrossEncoder(model_name='jinaai/jina-reranker-v2-base-multilingual')
+# reranker_model = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L-2-v2")
+reranker_model = TextCrossEncoder(model_name='jinaai/jina-reranker-v1-turbo-en')
+# BAAI/bge-reranker-base
+# jinaai/jina-reranker-v1-turbo-en
 
 # функция удаляет коллекцию с таким именем, если она существует
 def clear_existing_collections(client,  collection_name):
@@ -46,14 +48,17 @@ def create_hybrid_collection(client, collection_name):
         collection_name=collection_name,
         vectors_config={
             "dense": VectorParams(
-                size=768,
+                size=1024,
                 distance=Distance.COSINE
             ),
 
             "colbertv2.0": VectorParams(
                 size=128,
                 distance=Distance.COSINE,
-                multivector_config=MultiVectorConfig(comparator="max_sim")
+                multivector_config=MultiVectorConfig(comparator="max_sim"),
+                hnsw_config=HnswConfigDiff(
+                    m=0  # отключение построение графа HNSW
+                )
             ),
         },
         sparse_vectors_config={
@@ -73,7 +78,7 @@ def create_hybrid_collection(client, collection_name):
     logger.info(f"Создана коллекция {collection_name}, готова к заполнению")
     print(f"Создана коллекция {collection_name}, готова к заполнению")
 
-dense_embeddings = np.memmap('embeddings/tas_b.memmap', dtype='float32', mode='r').reshape(-1, 768)
+dense_embeddings = np.memmap('embeddings/mxbai-embed-large-v1.memmap', dtype='float32', mode='r').reshape(-1, 1024)
 colbert_embeddings = np.memmap('embeddings/colbert_embeddings.memmap', dtype='float32', mode='r').reshape(-1, 256, 128)
 with open('embeddings/sparse_embeddings.pkl', 'rb') as f:
     sparse_embeddings = pickle.load(f)
@@ -144,14 +149,15 @@ def upload_hybrid_data(client, collection_name: str, data):
 def load_embedding():
     return {
         "bm25": SparseTextEmbedding("Qdrant/bm25"),
-        "dense": SentenceBERT("msmarco-distilbert-base-tas-b"),
+        "dense": TextEmbedding(model_name="mixedbread-ai/mxbai-embed-large-v1"),
         "colbert": LateInteractionTextEmbedding("colbert-ir/colbertv2.0")
     }
 # кодировка тестового запроса
 def encode_query(query_text, models):
     sparse_vector = list(models["bm25"].query_embed(query_text))
     sparse_embedding = sparse_vector[0] if sparse_vector else None
-    dense_embedding = models["dense"].encode_corpus([{"text": query_text}], convert_to_tensor=False)[0]
+    # dense_embedding = models["dense"].encode_corpus([{"text": query_text}], convert_to_tensor=False)[0]
+    dense_embedding = list(models["dense"].embed(query_text, normalize=True))[0]
     colbert_embedding = list(models["colbert"].embed(query_text))[0]
     return sparse_embedding, dense_embedding, colbert_embedding
 
@@ -271,33 +277,33 @@ def benchmark_hybrid_rerank(client, collection_name, test_data, top_k_values, re
     return results
 
 # функция под TextCrossEncoder
-# def reranker(query, candidates, top_k=None):
-#     #  пары (query, context)
-#     texts = [context for context, _ in candidates]
-#
-#     #  оценки от модели через .rerank()
-#     new_scores = list(reranker_model.rerank(query, texts))
-#
-#     # сопоставление индексы и оценки
-#     ranking = [(i, score) for i, score in enumerate(new_scores)]
-#     ranking.sort(key=lambda x: x[1], reverse=True)
-#
-#     # сортировка кандидатов по оценкам
-#     reranked = [(texts[i], score) for i, score in ranking]
-#
-#     if top_k is not None:
-#         return reranked[:top_k]
-#     return reranked
-
-
-# функция под CrossEncoder
 def reranker(query, candidates, top_k=None):
-    texts = [(query, context) for context, _ in candidates]
-    scores = reranker_model.predict(texts)
-    # Добавляем новые оценки и сортируем по ним
-    reranked_results = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)
-    # Возвращаем кортежи: (context, new_score)
-    return [(context, score) for (context, _), score in reranked_results]
+    #  пары (query, context)
+    texts = [context for context, _ in candidates]
+
+    #  оценки от модели через .rerank()
+    new_scores = list(reranker_model.rerank(query, texts))
+
+    # сопоставление индексы и оценки
+    ranking = [(i, score) for i, score in enumerate(new_scores)]
+    ranking.sort(key=lambda x: x[1], reverse=True)
+
+    # сортировка кандидатов по оценкам
+    reranked = [(texts[i], score) for i, score in ranking]
+
+    if top_k is not None:
+        return reranked[:top_k]
+    return reranked
+
+#
+# # функция под CrossEncoder
+# def reranker(query, candidates, top_k=None):
+#     texts = [(query, context) for context, _ in candidates]
+#     scores = reranker_model.predict(texts)
+#     # Добавляем новые оценки и сортируем по ним
+#     reranked_results = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)
+#     # Возвращаем кортежи: (context, new_score)
+#     return [(context, score) for (context, _), score in reranked_results]
 
 
 def print_comparison(results_without_rerank, results_with_rerank, top_k_values):
@@ -317,13 +323,17 @@ def print_comparison(results_without_rerank, results_with_rerank, top_k_values):
         print(f"    - С реранкингом: {acc_after:.4f}")
 
 
-def run_bench_hybrid(client, data_for_db, data_df, top_k_values):
-    # Загрузка данных
-    upload_hybrid_data(
-        client=client,
-        collection_name="hybrid_collection",
-        data=data_for_db
-    )
+def run_bench_hybrid(client, data_for_db, data_df, load, top_k_values):
+    if load == 1:
+        # Загрузка данных
+        upload_hybrid_data(
+            client=client,
+            collection_name="hybrid_collection",
+            data=data_for_db
+        )
+    else:
+        logger.info(f"🔍 Не загружаем данные, параметр load=0")
+        print(f"\n🔍Не загружаем данные, параметр load=0")
 
     results_without_rerank = benchmark_hybrid_rerank(
         client=client,

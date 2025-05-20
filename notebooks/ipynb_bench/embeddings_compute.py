@@ -1,10 +1,16 @@
 import numpy as np
 from tqdm import tqdm
-from fastembed import SparseTextEmbedding, LateInteractionTextEmbedding
-from beir.retrieval.models import SentenceBERT
+from fastembed import SparseTextEmbedding, LateInteractionTextEmbedding, TextEmbedding
+from models_init import EMBEDDING_MODELS
+# from beir.retrieval.models import SentenceBERT
+# from sentence_transformers import SentenceTransformer
+
 import pickle
+import torch
 from read_data_from_csv import read_data
 from logger_init import setup_paths, setup_logging
+
+# e5 / arctic / snowflake / jina / mixedbread
 
 BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
 logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
@@ -24,21 +30,35 @@ logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 '''
 
 
+
 def load_embedding_models():
     bm25_model = SparseTextEmbedding("Qdrant/bm25")
     colbert_model = LateInteractionTextEmbedding("colbert-ir/colbertv2.0")
-
-    # список dense моделей
-    dense_models = {
-        "tas_b": SentenceBERT("msmarco-distilbert-base-tas-b"),  # 768
-        "all-MiniLM-L6-v2": SentenceBERT("sentence-transformers/all-MiniLM-L6-v2"),  # 384
-        "msmarco-MiniLM-L-6-v3": SentenceBERT("sentence-transformers/msmarco-MiniLM-L-6-v3"),  # 384
-        "msmarco-roberta-base-ance-firstp": SentenceBERT("sentence-transformers/msmarco-roberta-base-ance-firstp"),  # 768
-    }
+    dense_models = EMBEDDING_MODELS
+    #
+    # # список dense моделей
+    # dense_models = {
+    #     # "tas_b": SentenceBERT("msmarco-distilbert-base-tas-b"),  # 768
+    #     # "all-MiniLM-L6-v2": SentenceBERT("sentence-transformers/all-MiniLM-L6-v2"),  # 384
+    #     # "msmarco-MiniLM-L-6-v3": SentenceBERT("sentence-transformers/msmarco-MiniLM-L-6-v3"),  # 384
+    #     # "msmarco-roberta-base-ance-firstp": SentenceBERT("sentence-transformers/msmarco-roberta-base-ance-firstp"),  # 768
+    #     # новые модели
+    #
+    #     # "mxbai-embed-large-v1": SentenceTransformer("mixedbread-ai/mxbai-embed-large-v1", truncate_dim=512), #512
+    #     # "jina-embeddings-v2-base-en":SentenceTransformer("jinaai/jina-embeddings-v2-base-en", trust_remote_code=True), #1024
+    #     # "snowflake-arctic-embed-m": SentenceTransformer("Snowflake/snowflake-arctic-embed-m"), #768
+    #     # "e5-small-v2": SentenceTransformer('intfloat/e5-small-v2'), # 384
+    #
+    #     "jina-embeddings-v2-base-en": TextEmbedding(model_name="jinaai/jina-embeddings-v2-base-en"),  # 768
+    #     "snowflake-arctic-embed-s": TextEmbedding("snowflake/snowflake-arctic-embed-s"),  # 384
+    #     "snowflake-arctic-embed-m": TextEmbedding("snowflake/snowflake-arctic-embed-m"), #768
+    #     "mxbai-embed-large-v1": TextEmbedding(model_name="mixedbread-ai/mxbai-embed-large-v1"),  # 1024
+    #     "multilingual-e5-large" : TextEmbedding(model_name="intfloat/multilingual-e5-large") # 1024  The model intfloat/multilingual-e5-large now uses mean pooling instead of CLS embedding.
+    # }
 
     return bm25_model, colbert_model, dense_models
 
-
+#
 def build_embeddings(item, bm25_model, colbert_model, dense_models):
     text = item["context"]
 
@@ -49,14 +69,13 @@ def build_embeddings(item, bm25_model, colbert_model, dense_models):
     # Dense vectors (все модели)
     dense_embeddings = {}
     for model_name, model in dense_models.items():
-        emb = model.encode_corpus([{"text": text}], convert_to_tensor=False)[0]
+        emb = list(model.embed(text, normalize=True))[0]
+        # emb = model.encode([{"text": text}], convert_to_tensor=False)[0]
         dense_embeddings[model_name] = emb
 
     # ColBERT vector
     colbert_embedding = list(colbert_model.embed(text))[0]
-
     return sparse_embedding, dense_embeddings, colbert_embedding
-
 
 def generate_emb():
     sparse_list = []

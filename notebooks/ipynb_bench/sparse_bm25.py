@@ -132,13 +132,17 @@ def benchmark_bm25(client, collection_name, test_data,  top_k_values, search_par
 
 
 # запуск бенчмарка
-def run_benchmark_bm25_model(client, base_collection_name, data_for_db, data_df, search_algorithms, top_k_values):
+def run_benchmark_bm25_model(client, base_collection_name, load, data_for_db, data_df, search_algorithms, top_k_values):
     print("\n" + "=" * 80)
     print("🔍 ОЦЕНКА ПРОИЗВОДИТЕЛЬНОСТИ BM25")
     print("=" * 80)
     logger.info("Запуск оценки производительности BM25")
     bm25_collection_name = f"{base_collection_name}_bm25"
-    upload_bm25_data(client, bm25_collection_name, data_for_db)
+    if load == 1:
+        upload_bm25_data(client, bm25_collection_name, data_for_db)
+    else:
+        logger.info(f"🔍 Не загружаем данные, параметр load=0")
+        print(f"\n🔍Не загружаем данные, параметр load=0")
     bm25_speed_results = {}
     bm25_accuracy_results = {}
     for algo_name, search_params in search_algorithms.items():

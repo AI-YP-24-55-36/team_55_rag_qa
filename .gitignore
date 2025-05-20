@@ -3,6 +3,7 @@
 .csv
 .idea
 .ipynb_checkpoints
+full_dataset.csv
 .mypy_cache
 .vscode
 __pycache__

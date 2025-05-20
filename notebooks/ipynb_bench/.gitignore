@@ -2,6 +2,7 @@
 .png
 .joblib
 .csv
+full_dataset.csv
 .idea
 .txt
 .npy
