@@ -154,11 +154,13 @@ python bench.py --hybrid 1 --limit 11000
 
 - запуск с параметром `--hybrid 1` активируется гибридная модель с реранкингом, в результате получаем сравнение:
 
-![logs/graphs/accuracy_comparison_20250520_142226_hybrid.png](logs/graphs/accuracy_comparison_20250520_142226_hybrid.png)
+![logs/graphs/accuracy_comparison_20250520_202104_hybrid.png](logs/graphs/accuracy_comparison_20250520_202104_hybrid.png)
 
-точность с применением реранкига выше, то есть ранжирование ответов предоставляет верный в большем количестве случаев
+точность с применением реранкига выше, но уже для топ 5 ответов качество сравнялось
 
-![logs/graphs/speed_comparison_20250510_222542_hybrid.png](logs/graphs/speed_comparison_20250510_222542_hybrid.png)
+![logs/graphs/speed_comparison_20250520_202104_hybrid.png](logs/graphs/speed_comparison_20250520_202104_hybrid.png)
+
+Видим, что время извлечения ответов в среднем чуть выше с реранкингом
 
 - сравнение точности  поиска с разными параметрами 
   - hnsw-ef 128
