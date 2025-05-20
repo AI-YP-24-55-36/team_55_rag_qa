@@ -14,9 +14,12 @@ python bench.py --model-names BM25
 echo "Запуск бенчмарка c гибридным поиском и реранкером для коллекции в 11000 элементов"
 python bench.py --hybrid 1 --limit 11000
 
+echo "Запуск бенчмарка c гибридным поиском и реранкером для коллекции в 11000 элементов без нового создания и загрузки коллекции"
+python bench.py --hybrid 1 --limit 11000 --load 0
+
 # Запуск с конкретными моделями
 echo "Запуск бенчмарка с конкретными моделями..."
-python bench.py --model-names msmarco-roberta-base-ance-firstp all-MiniLM-L6-v2 msmarco-MiniLM-L-6-v3 BM25
+python bench.py --model-names BM25 jina-embeddings-v2-base-en, snowflake-arctic-embed-s
 
 # Запуск с настройкой параметров HNSW
 echo "Запуск бенчмарка с настройкой параметров HNSW..."
