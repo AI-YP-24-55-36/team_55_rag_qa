@@ -25,10 +25,10 @@ BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
 logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
 # модель для реранкинга
-# reranker_model = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L-2-v2")
+# reranker_model = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L-2-v2") - самая быстрая
 reranker_model = TextCrossEncoder(model_name='jinaai/jina-reranker-v1-turbo-en')
-# BAAI/bge-reranker-base
-# jinaai/jina-reranker-v1-turbo-en
+# BAAI/bge-reranker-base - очень медленная
+# jinaai/jina-reranker-v1-turbo-en - средняя скорость
 
 # функция удаляет коллекцию с таким именем, если она существует
 def clear_existing_collections(client,  collection_name):

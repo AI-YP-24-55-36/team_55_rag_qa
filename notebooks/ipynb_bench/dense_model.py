@@ -16,8 +16,6 @@ BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
 logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 from models_init import MODEL_VECTOR_SIZES
 
-# список денз моделей с длинами векторов
-
 
 # создание денз коллекции
 def create_collection(client, collection_name, vector_size, distance=Distance.COSINE):
