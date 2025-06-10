@@ -122,44 +122,44 @@ python bench.py --hybrid 1 --limit 11000
 ## Графики для 11_000 записей:
 
 - сравнение точности поиска между разными моделями конвертации текстов в эмбеддинги и методами
-
-![logs/graphs/accuracy_comparison_20250520-162012.png](notebooks/ipynb_bench/logs/graphs/accuracy_comparison_20250520-162012.png)
+notebooks/ipynb_bench/logs/graphs/accuracy_comparison_20250520-162012.png
+![logs/graphs/accuracy_comparison_20250520-162012.png](https://raw.githubusercontent.com/AI-YP-24-55-36/team_55_rag_qa/refs/heads/main/notebooks/ipynb_bench/logs/graphs/accuracy_comparison_20250520-162012.png)
 
 Лучшая точность у модели `e5-large`, это довольно "тяжелая модель" с длиной эмбеддинга 1024, модель  `snowflakes` - худший результат. 
 Эмбеддинги BM25 и jina примерно одинаковы по качеству. 
 
 - сравнение скорости линейного поиска:
 
-![logs/graphs/speed_comparison_20250520-162012.png](notebooks/ipynb_bench/logs/graphs/speed_comparison_20250520-162012.png)
+![logs/graphs/speed_comparison_20250520-162012.png](https://raw.githubusercontent.com/AI-YP-24-55-36/team_55_rag_qa/refs/heads/main/notebooks/ipynb_bench/logs/graphs/speed_comparison_20250520-162012.png)
 
 Самая высокая срость поиска по BM25 эмбеддингам, на втором месте snowflake, чем тяжелее эмбеддинги, тем дольше поиск  
 
 - сравнение точности по трем методам поиска для dense моделей:
 
-![logs/graphs/accuracy_comparison_20250520-180336.png](notebooks/ipynb_bench/logs/graphs/accuracy_comparison_20250520-180336.png)
+![logs/graphs/accuracy_comparison_20250520-180336.png](https://raw.githubusercontent.com/AI-YP-24-55-36/team_55_rag_qa/refs/heads/main/notebooks/ipynb_bench/logs/graphs/accuracy_comparison_20250520-180336.png)
 
 среди плотных эмбеддингов по качеству лучше всех также e5-large, параметры поиска в данном случае не повлияли на качество
 близкий результат у эмбеддингов mxbai-large, обе модели имеют одинаковый, самый большой размер эмбеддинга - 1024
 
 - сравнение по скорости поиска по трем методам поиска для dense моделей:
 
-![logs/graphs/speed_comparison_20250520-180336.png](notebooks/ipynb_bench/logs/graphs/speed_comparison_20250520-180336.png)  
+![logs/graphs/speed_comparison_20250520-180336.png](https://raw.githubusercontent.com/AI-YP-24-55-36/team_55_rag_qa/refs/heads/main/notebooks/ipynb_bench/logs/graphs/speed_comparison_20250520-180336.png)  
 
 видно, что чем "тяжелее" модель, тем медленне поиск
 
 - запуск  теста для модели BM25 с различным количеством top_k  
 
-![logs/graphs/accuracy_comparison_20250520-182922.png](notebooks/ipynb_bench/logs/graphs/accuracy_comparison_20250520-182922.png)
+![logs/graphs/accuracy_comparison_20250520-182922.png](https://raw.githubusercontent.com/AI-YP-24-55-36/team_55_rag_qa/refs/heads/main/notebooks/ipynb_bench/logs/graphs/accuracy_comparison_20250520-182922.png)
 
 при извлечении 10 ответов, точность самая высокая, то есть чем больше релевантных ответов мы будем запрашивать, тем больше шанс получить верный среди них
 
 - запуск с параметром `--hybrid 1` активируется гибридная модель с реранкингом, в результате получаем сравнение:
 
-![logs/graphs/accuracy_comparison_20250520_202104_hybrid.png](notebooks/ipynb_bench/logs/graphs/accuracy_comparison_20250520_202104_hybrid.png)
+![logs/graphs/accuracy_comparison_20250520_202104_hybrid.png](https://raw.githubusercontent.com/AI-YP-24-55-36/team_55_rag_qa/refs/heads/main/notebooks/ipynb_bench/logs/graphs/accuracy_comparison_20250520_202104_hybrid.png)
 
 точность с применением реранкига выше, но уже для топ 5 ответов качество сравнялось
 
-![logs/graphs/speed_comparison_20250520_202104_hybrid.png](notebooks/ipynb_bench/logs/graphs/speed_comparison_20250520_202104_hybrid.png)
+![logs/graphs/speed_comparison_20250520_202104_hybrid.png](https://raw.githubusercontent.com/AI-YP-24-55-36/team_55_rag_qa/refs/heads/main/notebooks/ipynb_bench/logs/graphs/speed_comparison_20250520_202104_hybrid.png)
 
 Видим, что время извлечения ответов в среднем чуть выше с реранкингом
 
@@ -169,9 +169,9 @@ python bench.py --hybrid 1 --limit 11000
   - --hnsw-ef 256 --hnsw-m 16 --ef-construct 100
   - --topk 5 --hnsw-ef 512 --hnsw-m 64 --ef-construct 1000
   
-![logs/graphs/accuracy_comparison_20250520-220435.png](notebooks/ipynb_bench/logs/graphs/accuracy_comparison_20250520-220435.png)
+![logs/graphs/accuracy_comparison_20250520-220435.png](https://raw.githubusercontent.com/AI-YP-24-55-36/team_55_rag_qa/refs/heads/main/notebooks/ipynb_bench/logs/graphs/accuracy_comparison_20250520-220435.png)
 
-![logs/graphs/accuracy_comparison_20250521-123541.png](notebooks/ipynb_bench/logs/graphs/accuracy_comparison_20250521-123541.png)
+![logs/graphs/accuracy_comparison_20250521-123541.png](https://raw.githubusercontent.com/AI-YP-24-55-36/team_55_rag_qa/refs/heads/main/notebooks/ipynb_bench/logs/graphs/accuracy_comparison_20250521-123541.png)
 
 На нашем датасете (предположительно из-за небольшого количества данных) при изменении разных параметров поиска точность не изменилась.
 
@@ -263,7 +263,7 @@ python bench.py --hybrid 1 --limit 11000
 ```
 
 Коллекции в БД:
-![logs/graphs/collections.png](notebooks/ipynb_bench/logs/graphs/collections.png)
+![logs/graphs/collections.png](https://raw.githubusercontent.com/AI-YP-24-55-36/team_55_rag_qa/refs/heads/main/notebooks/ipynb_bench/logs/graphs/collections.png)
 
 ### Reranker
 
