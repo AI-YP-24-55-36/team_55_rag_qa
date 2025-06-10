@@ -2,6 +2,7 @@
 .png
 .joblib
 .csv
+full_dataset.csv
 .idea
 .txt
 .npy
@@ -26,9 +27,12 @@ site_build
 venv
 docs.zip
 archive.zip
-logs/
+logs/*
+!logs/graphs/
+!logs/graphs/**
 embeddings/
 qdrant_data
+full_dataset.csv
 
 # vim temporary files
 *~

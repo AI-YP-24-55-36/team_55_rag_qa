@@ -1,6 +1,5 @@
-from pathlib import Path
 import yaml
-
+from pathlib import Path
 
 CONFIG_FILE = "config.yml"
 def load_config():

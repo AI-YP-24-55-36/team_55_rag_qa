@@ -1,24 +1,10 @@
 import pandas as pd
-import logging
 import numpy as np
 from pathlib import Path
+from logger_init import setup_paths, setup_logging
 
-# Настройка логгера для текущего модуля
-logger = logging.getLogger('read_data')
-logger.setLevel(logging.INFO)
-logger.propagate = False  # Отключаем передачу логов родительским логгерам
-
-# Создание обработчика для записи логов в файл
-Path('./logs').mkdir(exist_ok=True)
-file_handler = logging.FileHandler('./logs/read_data.log')
-file_handler.setLevel(logging.INFO)
-
-# Форматирование логов
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-
-# Добавление обработчиков к логгеру
-logger.addHandler(file_handler)
+BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR = setup_paths()
+logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
 
 class DatasetError(Exception):
@@ -99,5 +85,3 @@ def read_data(file_path='full_dataset.csv', limit=100, random_seed=42):
             f"Ошибка при парсинге файла {file_path}. Убедитесь, что это корректный CSV файл")
     except Exception as e:
         raise DatasetError(f"Ошибка при обработке датасета: {str(e)}")
-
-

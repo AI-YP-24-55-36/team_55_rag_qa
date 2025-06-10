@@ -1,262 +1,251 @@
-import datetime
-import logging
-import sys
-import time
-from pathlib import Path
-
+import argparse
 from tqdm import tqdm
-from fastembed import SparseTextEmbedding
-from qdrant_client import models
+from fastembed import TextEmbedding
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import SearchParams, HnswConfigDiff
+from read_data_from_csv import read_data
+from logger_init import setup_paths, setup_logging
+from visualisation import visualize_results
+from hybrid_rerank import print_comparison, run_bench_hybrid
+from visualisation import visualize_results_rerank
+from sparse_bm25 import upload_bm25_data, run_benchmark_bm25_model
+from report_data import print_speed_results, print_accuracy_results
+from dense_model import upload_dense_model_collections, benchmark_performance
+from models_init import EMBEDDING_MODELS
 
-from log_output import Tee
-from load_config import load_config
-
-config = load_config()
-BASE_DIR = Path(config["paths"]["base_dir"])
-LOGS_DIR = BASE_DIR / config["paths"]["logs_dir"]
-GRAPHS_DIR = BASE_DIR / config["paths"]["graphs_dir"]
-OUTPUT_DIR = BASE_DIR / config["paths"]["output_dir"]
+BASE_DIR, LOGS_DIR, GRAPHS_DIR, OUTPUT_DIR, EMBEDDINGS_DIR,  = setup_paths()
+logger = setup_logging(LOGS_DIR, OUTPUT_DIR)
 
 
-timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-sys.stdout = Tee(f"{OUTPUT_DIR}/log_{timestamp}.txt")
+# функция для инициализации аргументов запуска бенчмарка
+def parse_args():
+    parser = argparse.ArgumentParser(description='Бенчмарк для RAG системы')
+    # параметры подключения к Qdrant
+    parser.add_argument('--qdrant-host', type=str, default='localhost',
+                        help='Хост Qdrant сервера')
+    parser.add_argument('--qdrant-port', type=int, default=6333,
+                        help='Порт Qdrant сервера')
+    parser.add_argument('--collection-name', type=str, default='rag',
+                        help='Название коллекции в Qdrant')
+    parser.add_argument('--topk', type=int, nargs='+',
+                        default=[1, 3, 5],
+                        help='Количество извлекаемых ответов')
+    parser.add_argument('--load', type=int, default=1,
+                        help='Параметр, говорит о том, нужно ли создавать и загружать коллекцию')
 
-logger = logging.getLogger('bench')
-logger.setLevel(logging.INFO)
-logger.propagate = False
+    # список моделей
+    parser.add_argument('--model-names', nargs='+',
+                        default=[
+                            "jina-embeddings-v2-base-en",
+                            "snowflake-arctic-embed-s",
+                            "mxbai-embed-large-v1",
+                            "multilingual-e5-large",
+                            "BM25"],
 
-file_handler = logging.FileHandler(f'{LOGS_DIR}/bench.log')
-file_handler.setLevel(logging.INFO)
+                        help='Список моделей для сравнения, включая BM25')
+    parser.add_argument('--vector-size', type=int, default=384,
+                        help='Размер векторов эмбеддингов')
+    parser.add_argument('--batch-size', type=int, default=1000,
+                        help='Размер батча для загрузки данных')
+    parser.add_argument('--limit', type=int, default=1000,
+                        help='Максимальное количество записей для использования')
 
-# Форматирование логов
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
+    # параметры HNSW для dense моделей
+    parser.add_argument('--hnsw-ef', type=int, default=16,
+                        help='Параметр ef для HNSW')
+    parser.add_argument('--hnsw-m', type=int, default=16,
+                        help='Параметр m для HNSW (количество соседей)')
+    parser.add_argument('--ef-construct', type=int, default=200,
+                        help='Параметр ef_construct для HNSW')
 
-# Добавление обработчиков к логгеру
-logger.addHandler(file_handler)
+    parser.add_argument('--hybrid', type=int, default=0,
+                        help='Параметр для запуска гибридного поиска')
 
-def benchmark_bm25(client, collection_name, test_data, search_params=None, top_k_values=[1, 3]):
-    """Бенчмарк производительности BM25 в Qdrant"""
+    return parser.parse_args()
 
-    print(f"\n🔍 Запуск оценки производительности BM25 для коллекции '{collection_name}'")
-    logger.info(f"Запуск оценки производительности BM25 для коллекции '{collection_name}'")
 
-    # Результаты
-    results = {
-        "speed": {
-            "avg_time": 0,
-            "median_time": 0,
-            "max_time": 0,
-            "min_time": 0,
-            "query_times": []
-        },
-        "accuracy": {k: {"correct": 0, "total": 0, "accuracy": 0} for k in top_k_values}
+
+def initialize_models(all_models, args, client, data_for_db):
+    models_to_compare = [m for m in all_models if m != 'BM25']
+    use_bm25 = 'BM25' in all_models
+    model_instances = {}
+
+    if models_to_compare:
+        print("🔄 Инициализация моделей для dense векторов...")
+        progress_bar = tqdm(total=len(models_to_compare), desc="Загрузка моделей", unit="модель")
+
+        for model_name in models_to_compare.copy():
+            try:
+                logger.info(f"Инициализация модели: {model_name}")
+                model_instances[model_name] = EMBEDDING_MODELS.get(model_name)
+                progress_bar.update(1)
+            except Exception as e:
+                logger.error(f"Ошибка при инициализации модели {model_name}: {e}")
+                models_to_compare.remove(model_name)
+        progress_bar.close()
+        print(f"✅ Модели инициализированы: {', '.join(models_to_compare)}")
+
+    search_algorithms = {
+        "Exact Search": SearchParams(exact=True),
+        f"HNSW Users ef={args.hnsw_ef}": SearchParams(hnsw_ef=args.hnsw_ef),
+        "HNSW High Precision ef=512": SearchParams(hnsw_ef=512)
     }
 
-    # Получаем максимальное значение top_k для поиска
-    max_top_k = max(top_k_values)
+    bm25_model = None
+    if use_bm25:
+        print("🔄 Инициализация модели BM25...")
+        logger.info("Инициализация модели BM25")
+        bm25_model = 'BM25'
 
-    # Общее количество запросов
-    total_queries = len(test_data)
-    logger.info(f"Оценка производительности BM25 для {total_queries} запросов")
-    print(f"⏱️  Измерение скорости и точности поиска BM25...")
+        bm25_collection_name = f"{args.collection_name}_bm25"
+        if args.load == 1:
+            upload_bm25_data(client, bm25_collection_name, data_for_db)
+        else:
+            logger.info(f"🔍 Не загружаем данные, параметр load=0")
+            print(f"\n🔍Не загружаем данные, параметр load=0")
 
-    # Создаем прогресс-бар
-    progress_bar = tqdm(total=total_queries, desc="Обработка запросов BM25", unit="запрос")
+        search_algorithms = {"Exact Search": SearchParams(exact=True)}
 
-    bm25_embedding_model = SparseTextEmbedding("Qdrant/bm25")
+    return models_to_compare, bm25_model, model_instances, search_algorithms
 
-    # Обрабатываем каждый запрос отдельно
-    for idx, row in test_data.iterrows():
-        query_text = row['question']
-        true_context = row['context']
 
-        vector = list(bm25_embedding_model.query_embed(query_text))[0]
-        query_indices = vector.indices.tolist()
-        query_values = vector.values.tolist()
+def evaluate_dense_models(client, models_to_compare, search_algorithms, args, data_df):
+    """
+    Выполняет бенчмарк уже загруженных dense-моделей.
+    """
+    speed_results = {}
+    accuracy_results = {}
+    top_k_values = args.topk
 
-        # Измеряем время поиска
-        start_time = time.time()
+    for model_name in models_to_compare:
+        collection_name = f"{args.collection_name}_{model_name.replace('-', '_')}"
+        speed_results[model_name] = {}
+        accuracy_results[model_name] = {}
 
-        # Выполняем поиск
-        search_results = client.query_points(
-            collection_name=collection_name,
-            query=models.SparseVector(
-                indices=query_indices,
-                values=query_values,
-            ),
-            using="bm25",
-            limit=max_top_k,
-            search_params=search_params
+        for algo_name, search_params in search_algorithms.items():
+            logger.info(f"🔍 Оценка алгоритма {algo_name} с моделью {model_name}")
+            print(f"\n🔍 Оценка алгоритма {algo_name} с моделью {model_name}")
+
+            if algo_name.startswith("HNSW"):
+                client.update_collection(
+                    collection_name=collection_name,
+                    hnsw_config=HnswConfigDiff(
+                        m=args.hnsw_m,
+                        ef_construct=args.ef_construct,
+                    )
+                )
+
+            benchmark_results = benchmark_performance(
+                client=client,
+                collection_name=collection_name,
+                test_data=data_df,
+                model_name=model_name,
+                top_k_values=top_k_values,
+                search_params=search_params
+            )
+
+            speed_results[model_name][algo_name] = benchmark_results["speed"]
+            accuracy_results[model_name][algo_name] = benchmark_results["accuracy"]
+
+    return speed_results, accuracy_results
+
+
+def run_dense_benchmark(client, all_models, args, data_for_db, data_df):
+    models_to_compare, bm25_model, model_instances, search_algorithms = initialize_models(all_models, args, client,
+                                                                                          data_for_db)
+    speed_results = {}
+    accuracy_results = {}
+    if args.load == 1:
+        upload_dense_model_collections(client, models_to_compare, args, data_for_db)
+    else:
+        logger.info(f"🔍 Не загружаем данные, параметр load=0")
+        print(f"\n🔍Не загружаем данные, параметр load=0")
+    top_k_values = args.topk
+    # бенчмарк для dense моделей
+    if models_to_compare:
+        speed_results, accuracy_results = evaluate_dense_models(
+            client=client,
+            models_to_compare=models_to_compare,
+            search_algorithms=search_algorithms,
+            args=args,
+            data_df=data_df
         )
 
+        if bm25_model != 'BM25':
+            print_speed_results(speed_results, models_to_compare)
+            print_accuracy_results(accuracy_results, models_to_compare, top_k_values)
+            visualize_results(
+                speed_results=speed_results,
+                accuracy_results=accuracy_results,
+                title_prefix="Сравнение производительности RAG системы",
+                save_dir="./logs/graphs"
+            )
 
-        end_time = time.time()
-        query_time = end_time - start_time
-        results["speed"]["query_times"].append(query_time)
+    # бенчмарк для BM25
+    bm25_results = None
+    if bm25_model:
+        bm25_results = run_benchmark_bm25_model(client, args.collection_name, args.load, data_for_db, data_df, search_algorithms, top_k_values)
+        print_speed_results(speed_results, models_to_compare, bm25_results)
+        print_accuracy_results(accuracy_results, models_to_compare, top_k_values, bm25_results)
 
-        found_contexts = []
-        for point in search_results.points:
-            context = point.payload.get('context', '')
-            score = point.score  # Оценка релевантности (если доступна)
-            found_contexts.append((context, score))
-
-
-        for k in top_k_values:
-            results["accuracy"][k]["total"] += 1
-            if true_context in found_contexts[0][:k]:
-                results["accuracy"][k]["correct"] += 1
-                logger.info(f"BM25 Запрос {idx}: '{query_text[:50]}...' - Контекст найден в top-{k} ✓")
-            else:
-                logger.info(f"BM25 Запрос {idx}: '{query_text[:50]}...' - Контекст не найден в top-{k} ✗")
-
-        # Обновляем прогресс-бар
-        progress_bar.update(1)
-
-    # Закрываем прогресс-бар
-    progress_bar.close()
-
-    # Вычисляем статистику скорости
-    query_times = results["speed"]["query_times"]
-    if query_times:
-        results["speed"]["avg_time"] = sum(query_times) / len(query_times)
-        results["speed"]["median_time"] = sorted(query_times)[len(query_times) // 2]
-        results["speed"]["max_time"] = max(query_times)
-        results["speed"]["min_time"] = min(query_times)
-
-    # Удаляем промежуточные данные о времени запросов
-    del results["speed"]["query_times"]
-
-    # Вычисляем точность для каждого значения top_k
-    for k in top_k_values:
-        correct = results["accuracy"][k]["correct"]
-        total = results["accuracy"][k]["total"]
-        accuracy = correct / total if total > 0 else 0
-        results["accuracy"][k]["accuracy"] = accuracy
-
-        logger.info(f"BM25 Точность поиска (top-{k}): {accuracy:.4f} ({correct}/{total})")
-
-    # Выводим статистику скорости
-    logger.info(f"BM25 Среднее время поиска: {results['speed']['avg_time'] * 1000:.2f} мс")
-    logger.info(f"BM25 Медианное время поиска: {results['speed']['median_time'] * 1000:.2f} мс")
-    logger.info(f"BM25 Максимальное время поиска: {results['speed']['max_time'] * 1000:.2f} мс")
-    logger.info(f"BM25 Минимальное время поиска: {results['speed']['min_time'] * 1000:.2f} мс")
-
-    print(f"✅ Оценка производительности BM25 завершена для коллекции '{collection_name}'")
-
-    return results
-
-def benchmark_performance(client, collection_name, test_data, model, search_params=None, top_k_values=[1, 3]):
-    print(
-        f"\n🔍 Запуск оценки производительности для коллекции '{collection_name}'")
-    logger.info(
-        f"Запуск оценки производительности для коллекции '{collection_name}'")
-
-    # Результаты
-    results = {
-        "speed": {
-            "avg_time": 0,
-            "median_time": 0,
-            "max_time": 0,
-            "min_time": 0,
-            "query_times": []
-        },
-        "accuracy": {k: {"correct": 0, "total": 0, "accuracy": 0} for k in top_k_values}
-    }
-
-    # Получаем максимальное значение top_k для поиска
-    max_top_k = max(top_k_values)
-
-    # Общее количество запросов
-    total_queries = len(test_data)
-    logger.info(f"Оценка производительности для {total_queries} запросов")
-    print(f"⏱️  Измерение скорости и точности поиска...")
-
-    # Создаем прогресс-бар
-    progress_bar = tqdm(total=total_queries,
-                        desc="Обработка запросов", unit="запрос")
-
-    # Обрабатываем каждый запрос отдельно
-    for idx, row in test_data.iterrows():
-        query_text = row['question']
-        true_context = row['context']
-
-        # Генерируем эмбеддинг для запроса
-        query_vector = model.encode(query_text, show_progress_bar=False)
-
-        # Измеряем время поиска
-        start_time = time.time()
-
-        # Выполняем поиск
-        search_results = client.query_points(
-            collection_name=collection_name,
-            query=query_vector.tolist(),
-            using="context",
-            search_params=search_params,
-            limit=max_top_k  # Используем максимальное значение top_k
+        visualize_results(
+            speed_results=speed_results,
+            accuracy_results=accuracy_results,
+            bm25_results=bm25_results,
+            title_prefix="Сравнение производительности RAG системы",
+            save_dir="./logs/graphs"
         )
 
-        end_time = time.time()
-        query_time = end_time - start_time
-        results["speed"]["query_times"].append(query_time)
+    logger.info("Бенчмарк завершен успешно")
+    print("\n" + "=" * 80)
+    print("✅ БЕНЧМАРК ЗАВЕРШЕН УСПЕШНО")
+    print("Графики сохранены в директории ./logs/graphs/")
+    print("=" * 80)
 
-        # Оцениваем точность для разных значений top_k
-        found_contexts = [point.payload.get(
-            'context', '') for point in search_results.points]
 
-        # Проверяем точность для каждого значения top_k
-        for k in top_k_values:
-            # Увеличиваем общее количество запросов
-            results["accuracy"][k]["total"] += 1
+def main():
+    args = parse_args()
+    hybrid = args.hybrid
+    print("\n" + "=" * 80)
+    print("🚀 ЗАПУСК БЕНЧМАРКА RAG СИСТЕМЫ")
+    print("=" * 80)
+    logger.info("Запуск бенчмарка RAG системы")
+    # инициализация клиента Qdrant
+    client = QdrantClient(host=args.qdrant_host, port=args.qdrant_port)
+    # загрузка данных в соответствии с аргументом limit
+    logger.info(f"Загрузка данных с limit={args.limit}")
+    print(f"📂 Загрузка данных (limit={args.limit})...")
+    data_for_db, data_df = read_data(limit=args.limit)
+    logger.info(f"Загружено {len(data_for_db)} документов")
+    print(f"✅ Загружено {len(data_for_db)} документов")
 
-            # Проверяем, найден ли правильный контекст в первых k результатах
-            if true_context in found_contexts[:k]:
-                results["accuracy"][k]["correct"] += 1
-                logger.info(
-                    f"Запрос {idx}: '{query_text[:50]}...' - Контекст найден в top-{k} ✓")
-            else:
-                logger.info(
-                    f"Запрос {idx}: '{query_text[:50]}...' - Контекст не найден в top-{k} ✗")
+    if hybrid == 0:
+        # список моделей из аргументов командной строки
+        all_models = args.model_names
+        logger.info(f"Выбранные модели для сравнения: {', '.join(all_models)}")
+        print(f"🔄 Выбранные модели для сравнения: {', '.join(all_models)}")
+        run_dense_benchmark(client, all_models, args, data_for_db, data_df)
 
-        # Обновляем прогресс-бар
-        progress_bar.update(1)
+    # гибридный поиск в гибридной коллекции
+    elif hybrid == 1:
+        top_k_values = args.topk
+        load = args.load
+        print("\n" + "=" * 80)
+        print("🚀 ЗАПУСК БЕНЧМАРКА RAG СИСТЕМЫ С ГИБРИДНЫМ ПОИСКОМ")
+        print("=" * 80)
+        logger.info("Запуск бенчмарка RAG системы")
+        args = parse_args()
+        data_for_db, data_df = read_data(limit=args.limit)
+        client = QdrantClient(host=args.qdrant_host, port=args.qdrant_port)
+        results_without_rerank, results_with_rerank = run_bench_hybrid(client, data_for_db, data_df, load, top_k_values)
+        print_comparison(results_without_rerank, results_with_rerank, top_k_values)
+        visualize_results_rerank(results_without_rerank, results_with_rerank, top_k_values)
+        logger.info("Бенчмарк завершен успешно")
+        print("\n" + "=" * 80)
+        print("✅ БЕНЧМАРК ЗАВЕРШЕН УСПЕШНО")
+        print(f"Графики сохранены в директории {GRAPHS_DIR}")
+        print("=" * 80)
 
-    # Закрываем прогресс-бар
-    progress_bar.close()
 
-    # Вычисляем статистику скорости
-    query_times = results["speed"]["query_times"]
-    if query_times:
-        results["speed"]["avg_time"] = sum(query_times) / len(query_times)
-        results["speed"]["median_time"] = sorted(
-            query_times)[len(query_times) // 2]
-        results["speed"]["max_time"] = max(query_times)
-        results["speed"]["min_time"] = min(query_times)
-
-    # Удаляем промежуточные данные о времени запросов
-    del results["speed"]["query_times"]
-
-    # Вычисляем точность для каждого значения top_k
-    for k in top_k_values:
-        correct = results["accuracy"][k]["correct"]
-        total = results["accuracy"][k]["total"]
-        accuracy = correct / total if total > 0 else 0
-        results["accuracy"][k]["accuracy"] = accuracy
-
-        logger.info(
-            f"Точность поиска (top-{k}): {accuracy:.4f} ({correct}/{total})")
-
-    # Выводим статистику скорости
-    logger.info(
-        f"Среднее время поиска: {results['speed']['avg_time'] * 1000:.2f} мс")
-    logger.info(
-        f"Медианное время поиска: {results['speed']['median_time'] * 1000:.2f} мс")
-    logger.info(
-        f"Максимальное время поиска: {results['speed']['max_time'] * 1000:.2f} мс")
-    logger.info(
-        f"Минимальное время поиска: {results['speed']['min_time'] * 1000:.2f} мс")
-
-    print(
-        f"✅ Оценка производительности завершена для коллекции '{collection_name}'")
-
-    return results
+if __name__ == "__main__":
+    main()
