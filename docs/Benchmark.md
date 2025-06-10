@@ -122,7 +122,7 @@ python bench.py --hybrid 1 --limit 11000
 ## Графики для 11_000 записей:
 
 - сравнение точности поиска между разными моделями конвертации текстов в эмбеддинги и методами
-notebooks/ipynb_bench/logs/graphs/accuracy_comparison_20250520-162012.png
+
 ![logs/graphs/accuracy_comparison_20250520-162012.png](https://raw.githubusercontent.com/AI-YP-24-55-36/team_55_rag_qa/refs/heads/main/notebooks/ipynb_bench/logs/graphs/accuracy_comparison_20250520-162012.png)
 
 Лучшая точность у модели `e5-large`, это довольно "тяжелая модель" с длиной эмбеддинга 1024, модель  `snowflakes` - худший результат. 
