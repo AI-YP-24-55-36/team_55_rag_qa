@@ -23,7 +23,6 @@ site_build
 venv
 docs.zip
 archive.zip
-logs/
 qdrant_data
 
 .png
